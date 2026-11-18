@@ -1,0 +1,22 @@
+{
+  "name": "physics",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "물리 놀이터 — 던지고, 띄우고, 부딪혀 보는 초심자용 물리 샌드박스",
+  "scripts": {
+    "dev": "vite --host 127.0.0.1",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview --host 127.0.0.1",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "matter-js": "^0.20.0",
+    "pretendard": "^1.3.9"
+  },
+  "devDependencies": {
+    "@types/matter-js": "^0.20.2",
+    "typescript": "^7.0.2",
+    "vite": "^8.3.8"
+  }
+}
