@@ -1,24 +1,31 @@
 import { boom, click, ding, impact, isMuted, setMuted, unlock } from './audio';
 import { MATERIALS, PICKABLE } from './materials';
+import { icon } from './icons';
 import { fitView, render, toWorld, type View } from './render';
 import { CATS, type Runtime, type Scene } from './scenes';
 import { Sim } from './sim';
 import { ALL_TOOLS, SIZES, TOOLS, ToolController, type ToolId, type ToolState } from './tools';
 
 const GRAVITY = [
-  { id: 'earth', label: '🌍 지구', g: { x: 0, y: 1 } },
-  { id: 'moon', label: '🌙 달', g: { x: 0, y: 0.17 } },
-  { id: 'jupiter', label: '🪐 목성', g: { x: 0, y: 2.5 } },
-  { id: 'zero', label: '🛰️ 무중력', g: { x: 0, y: 0 } },
-  { id: 'up', label: '🙃 거꾸로', g: { x: 0, y: -1 } },
+  { id: 'earth', label: '지구', g: { x: 0, y: 1 } },
+  { id: 'moon', label: '달', g: { x: 0, y: 0.17 } },
+  { id: 'jupiter', label: '목성', g: { x: 0, y: 2.5 } },
+  { id: 'zero', label: '무중력', g: { x: 0, y: 0 } },
+  { id: 'up', label: '거꾸로', g: { x: 0, y: -1 } },
 ];
 const AIR = [
-  { v: 0, label: '없음 (진공)' },
+  { v: 0, label: '진공' },
   { v: 1, label: '보통' },
-  { v: 4, label: '끈적끈적' },
+  { v: 4, label: '진하게' },
 ];
 const SPEEDS = [0.25, 0.5, 1, 2];
-const SPEED_LABEL: Record<number, string> = { 0.25: '🐌 ¼배', 0.5: '🐢 ½배', 1: '▶ 1배', 2: '🐇 2배' };
+const SPEED_LABEL: Record<number, string> = { 0.25: '0.25×', 0.5: '0.5×', 1: '1×', 2: '2×' };
+
+const ACT_ICON: Record<string, string> = { '🔄': 'reset', '🧭': 'arrow', '🌬️': 'wind', '🚀': 'play' };
+const actIcon = (a: { icon: string; primary?: boolean }) => {
+  const name = a.primary ? 'play' : ACT_ICON[a.icon];
+  return name ? icon(name, 16) : '';
+};
 
 const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]!);
 
@@ -27,19 +34,24 @@ export function mountPlay(root: HTMLElement, scene: Scene) {
   root.innerHTML = `
   <div class="play" style="--c:${cat.color}">
     <header class="pbar">
-      <a href="#/" class="back" aria-label="놀이터 목록으로">←<span> 놀이터</span></a>
+      <a href="#/" class="back" aria-label="실험 목록으로" title="실험 목록으로">${icon('back', 20)}</a>
       <div class="ptitle">
-        <span class="pemoji">${scene.emoji}</span>
+        <span class="crumb">${icon('cat-' + scene.cat, 14)}${cat.name}</span>
         <h1>${esc(scene.title)}</h1>
-        <span class="chip">${cat.emoji} ${cat.name}</span>
       </div>
       <div class="pctl">
-        <button class="ib" data-act="pause" title="멈춤 / 계속 (스페이스)">⏸</button>
-        <button class="ib wide" data-act="speed" title="시간 빠르기">▶ 1배</button>
-        <button class="ib" data-act="undo" title="되돌리기 (Ctrl+Z)">↶</button>
-        <button class="ib" data-act="reset" title="처음부터 다시">🔄</button>
-        <button class="ib" data-act="sound" title="소리 켜기/끄기">🔊</button>
-        <button class="ib" data-act="settings" title="설정: 중력·공기·보기">⚙️</button>
+        <div class="btngroup">
+          <button class="ib" data-act="pause" title="일시정지 / 재생 (Space)" aria-label="일시정지">${icon('pause')}</button>
+          <button class="ib wide" data-act="speed" title="시뮬레이션 속도">1×</button>
+        </div>
+        <div class="btngroup">
+          <button class="ib" data-act="undo" title="되돌리기 (Ctrl+Z)" aria-label="되돌리기">${icon('undo')}</button>
+          <button class="ib" data-act="reset" title="처음 상태로" aria-label="처음 상태로">${icon('reset')}</button>
+        </div>
+        <div class="btngroup">
+          <button class="ib" data-act="sound" title="소리 켜기/끄기" aria-label="소리">${icon('sound')}</button>
+          <button class="ib" data-act="settings" title="환경 설정: 중력·공기·표시" aria-label="환경 설정">${icon('settings')}</button>
+        </div>
       </div>
     </header>
     <div class="pmain">
@@ -49,26 +61,26 @@ export function mountPlay(root: HTMLElement, scene: Scene) {
       <div class="stage">
         <canvas></canvas>
         <div class="hint">
-          <button class="hint-toggle" aria-expanded="true">💡 해보기</button>
+          <button class="hint-toggle" aria-expanded="true">${icon('guide', 16)}<span>실험 가이드</span></button>
           <div class="hint-body">
-            <ul>${scene.tips.map((t) => `<li>${esc(t)}</li>`).join('')}</ul>
-            <details><summary>🤔 왜 그럴까?</summary><p>${esc(scene.why)}</p></details>
+            <ol>${scene.tips.map((t) => `<li>${esc(t)}</li>`).join('')}</ol>
+            <details><summary>${icon('bulb', 15)}왜 그럴까?</summary><p>${esc(scene.why)}</p></details>
           </div>
         </div>
         <div class="hud" hidden></div>
         <div class="actions"></div>
         <div class="toast" hidden></div>
-        <div class="paused-badge" hidden>⏸ 멈춤 — 스페이스를 누르거나 ⏸ 버튼을 눌러 계속</div>
+        <div class="paused-badge" hidden>${icon('pause', 14)} 일시정지됨 · Space 키로 재생</div>
         <aside class="settings" hidden>
-          <div class="set-head"><b>⚙️ 놀이터 설정</b><button class="ib sm" data-act="close-settings" aria-label="닫기">✕</button></div>
+          <div class="set-head"><b>환경 설정</b><button class="ib sm" data-act="close-settings" aria-label="닫기">${icon('close', 16)}</button></div>
           <div class="set-group"><span>중력</span><div class="chips" data-set="gravity">${GRAVITY.map((g) => `<button class="chipbtn" data-v="${g.id}">${g.label}</button>`).join('')}</div></div>
           <div class="set-group"><span>공기 저항</span><div class="chips" data-set="air">${AIR.map((a) => `<button class="chipbtn" data-v="${a.v}">${a.label}</button>`).join('')}</div></div>
-          <div class="set-group"><span>시간 빠르기</span><div class="chips" data-set="speed">${SPEEDS.map((s) => `<button class="chipbtn" data-v="${s}">${SPEED_LABEL[s]}</button>`).join('')}</div></div>
-          <div class="set-group"><span>보기</span><div class="chips">
-            <button class="chipbtn" data-toggle="trails">〰️ 지나간 길</button>
-            <button class="chipbtn" data-toggle="field">🧭 힘 화살표</button>
-          </div></div>
-          <p class="set-note">💡 키보드: 스페이스 멈춤 · Ctrl+Z 되돌리기 · 숫자키로 도구 고르기</p>
+          <div class="set-group"><span>시뮬레이션 속도</span><div class="chips" data-set="speed">${SPEEDS.map((s) => `<button class="chipbtn" data-v="${s}">${SPEED_LABEL[s]}</button>`).join('')}</div></div>
+          <div class="set-group"><span>표시</span>
+            <button class="switch" data-toggle="trails"><span>이동 경로</span><i></i></button>
+            <button class="switch" data-toggle="field"><span>힘 화살표</span><i></i></button>
+          </div>
+          <p class="set-note"><kbd>Space</kbd> 일시정지 · <kbd>Ctrl</kbd>+<kbd>Z</kbd> 되돌리기 · <kbd>1</kbd>–<kbd>9</kbd> 도구 선택</p>
         </aside>
       </div>
       </div>
@@ -126,17 +138,17 @@ export function mountPlay(root: HTMLElement, scene: Scene) {
         const t = TOOLS[id];
         const extra = !scene.tools.includes(id);
         return `<button class="tool${id === state.tool ? ' on' : ''}${extra ? ' extra' : ''}" data-tool="${id}" title="${esc(t.name)}${i < 9 ? ` (${i + 1})` : ''} — ${esc(t.tip)}">
-          <span class="ti">${t.icon}</span><span class="tn">${esc(t.name)}</span></button>`;
+          ${i < 9 ? `<kbd class="tk">${i + 1}</kbd>` : ''}<span class="ti">${icon(id, 22)}</span><span class="tn">${esc(t.name)}</span></button>`;
       })
       .join('') +
       (scene.tools.length < ALL_TOOLS.length
-        ? `<button class="tool more" data-more="1" title="${showAll ? '추천 도구만 보기' : '모든 도구 보기'}"><span class="ti">${showAll ? '−' : '＋'}</span><span class="tn">${showAll ? '접기' : '더보기'}</span></button>`
+        ? `<button class="tool more" data-more="1" title="${showAll ? '추천 도구만 보기' : '모든 도구 보기'}"><span class="ti">${icon(showAll ? 'less' : 'more', 20)}</span><span class="tn">${showAll ? '접기' : '모든 도구'}</span></button>`
         : '');
   }
 
   function renderSubbar() {
     const def = TOOLS[state.tool];
-    let html = `<div class="toolinfo"><b>${def.icon} ${esc(def.name)}</b><span>${esc(def.tip)}</span></div>`;
+    let html = `<div class="toolinfo">${icon(def.id, 16)}<b>${esc(def.name)}</b><span>${esc(def.tip)}</span></div>`;
     if (def.usesMat) {
       html += `<div class="seg">${PICKABLE.map((m) => {
         const mat = MATERIALS[m];
@@ -152,7 +164,7 @@ export function mountPlay(root: HTMLElement, scene: Scene) {
     }
     if (def.usesMat) {
       const m = MATERIALS[state.mat];
-      html += `<div class="matinfo">${m.emoji} ${esc(m.blurb)}</div>`;
+      html += `<div class="matinfo">${esc(m.name)} — ${esc(m.blurb)}</div>`;
     }
     subbar.innerHTML = html;
   }
@@ -178,7 +190,7 @@ export function mountPlay(root: HTMLElement, scene: Scene) {
   function renderActions() {
     const acts = rt.actions ?? [];
     actionsEl.innerHTML = acts
-      .map((a, i) => `<button class="act${a.primary ? ' primary' : ''}" data-i="${i}"><span>${a.icon}</span> ${esc(typeof a.label === 'function' ? a.label() : a.label)}</button>`)
+      .map((a, i) => `<button class="act${a.primary ? ' primary' : ''}" data-i="${i}">${actIcon(a)}<span>${esc(typeof a.label === 'function' ? a.label() : a.label)}</span></button>`)
       .join('');
   }
 
@@ -186,7 +198,7 @@ export function mountPlay(root: HTMLElement, scene: Scene) {
     (rt.actions ?? []).forEach((a, i) => {
       if (typeof a.label !== 'function') return;
       const el = actionsEl.querySelector(`[data-i="${i}"]`);
-      if (el) el.innerHTML = `<span>${a.icon}</span> ${esc(a.label())}`;
+      if (el) el.innerHTML = `${actIcon(a)}<span>${esc(a.label())}</span>`;
     });
   }
 
@@ -200,14 +212,31 @@ export function mountPlay(root: HTMLElement, scene: Scene) {
     });
     mark('air', (v) => Number(v) === sim.air);
     mark('speed', (v) => Number(v) === sim.speed);
-    settings.querySelector('[data-toggle="trails"]')!.classList.toggle('on', sim.trails);
-    settings.querySelector('[data-toggle="field"]')!.classList.toggle('on', sim.field);
+    const sw = (k: string, on: boolean) => {
+      const b = settings.querySelector(`[data-toggle="${k}"]`)!;
+      b.classList.toggle('on', on);
+      b.setAttribute('aria-pressed', String(on));
+    };
+    sw('trails', sim.trails);
+    sw('field', sim.field);
     $<HTMLButtonElement>('[data-act="speed"]').textContent = SPEED_LABEL[sim.speed];
-    $<HTMLButtonElement>('[data-act="pause"]').textContent = sim.paused ? '▶' : '⏸';
-    $<HTMLButtonElement>('[data-act="pause"]').classList.toggle('hot', sim.paused);
-    $<HTMLButtonElement>('[data-act="sound"]').textContent = isMuted() ? '🔇' : '🔊';
+    const pb = $<HTMLButtonElement>('[data-act="pause"]');
+    if (pb.dataset.state !== String(sim.paused)) {
+      pb.dataset.state = String(sim.paused);
+      pb.innerHTML = icon(sim.paused ? 'play' : 'pause');
+      pb.setAttribute('aria-label', sim.paused ? '재생' : '일시정지');
+    }
+    pb.classList.toggle('hot', sim.paused);
+    const sb = $<HTMLButtonElement>('[data-act="sound"]');
+    sb.innerHTML = icon(isMuted() ? 'mute' : 'sound');
+    $<HTMLButtonElement>('[data-act="settings"]').classList.toggle('on', !settings.hidden);
     pausedBadge.hidden = !sim.paused;
     refreshActionLabels();
+  }
+
+  function closeSettings() {
+    settings.hidden = true;
+    $<HTMLButtonElement>('[data-act="settings"]').classList.remove('on');
   }
 
   function togglePause() {
@@ -238,9 +267,9 @@ export function mountPlay(root: HTMLElement, scene: Scene) {
     if (el.dataset.toggle === 'field') sim.field = !sim.field;
     switch (el.dataset.act) {
       case 'pause': togglePause(); return;
-      case 'speed': sim.speed = SPEEDS[(SPEEDS.indexOf(sim.speed) + 1) % SPEEDS.length]; showToast(`시간 빠르기: ${SPEED_LABEL[sim.speed]}`); break;
+      case 'speed': sim.speed = SPEEDS[(SPEEDS.indexOf(sim.speed) + 1) % SPEEDS.length]; showToast(`시뮬레이션 속도 ${SPEED_LABEL[sim.speed]}`); break;
       case 'undo': sim.undo(); break;
-      case 'reset': build(); showToast('🔄 처음 모습으로 돌아왔어요'); break;
+      case 'reset': build(); showToast('처음 상태로 되돌렸어요'); break;
       case 'sound': setMuted(!isMuted()); break;
       case 'settings': settings.hidden = !settings.hidden; break;
       case 'close-settings': settings.hidden = true; break;
@@ -267,7 +296,7 @@ export function mountPlay(root: HTMLElement, scene: Scene) {
     if (activePointer !== null) return;
     activePointer = e.pointerId;
     canvas.setPointerCapture(e.pointerId);
-    settings.hidden = true;
+    closeSettings();
     // 처음 만지면 설명 카드는 살짝 접어서 놀이터를 넓게
     if (!touched) { touched = true; hint.classList.add('closed'); }
     ctrl.down(worldPos(e));
@@ -290,7 +319,7 @@ export function mountPlay(root: HTMLElement, scene: Scene) {
     if ((e.target as HTMLElement).closest('input, textarea')) return;
     if (e.code === 'Space') { e.preventDefault(); togglePause(); return; }
     if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') { e.preventDefault(); sim.undo(); return; }
-    if (e.key === 'Escape') { ctrl.cancel(); settings.hidden = true; return; }
+    if (e.key === 'Escape') { ctrl.cancel(); closeSettings(); return; }
     const n = Number(e.key);
     if (n >= 1 && n <= 9) {
       const btn = toolsEl.querySelectorAll<HTMLButtonElement>('[data-tool]')[n - 1];

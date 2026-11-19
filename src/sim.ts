@@ -435,7 +435,7 @@ export class Sim {
       restitution: o.restitution ?? 0.2, chamfer: { radius: Math.min(6, w / 2.5, h / 2.5) },
     });
     return this.tag(b, { kind: 'wall', shape: 'poly' }, {
-      color: o.color ?? '#6c5b7b', stroke: o.stroke ?? '#4a3d57', removable: o.removable ?? false, ...o,
+      color: o.color ?? '#5d6474', stroke: o.stroke ?? '#434958', removable: o.removable ?? false, ...o,
     });
   }
 
@@ -451,7 +451,7 @@ export class Sim {
   bounds(o: { ceiling?: boolean; floor?: number; color?: string; sides?: boolean } = {}) {
     const t = 200;
     const floor = o.floor ?? this.H - 40;
-    const c = { color: o.color ?? '#7a6a8a', stroke: '#584a66' };
+    const c = { color: o.color ?? '#6b7282', stroke: '#4c5262' };
     this.wall(this.W / 2, floor + t / 2, this.W + 2 * t, t, { ...c, friction: 0.8 });
     if (o.sides !== false) {
       this.wall(-t / 2, this.H / 2 - 400, t, this.H + 800, c);

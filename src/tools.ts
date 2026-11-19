@@ -45,8 +45,8 @@ export const TOOLS: Record<ToolId, ToolDef> = {
   gzone: {
     id: 'gzone', icon: '🌙', name: '중력 구역', tip: '끌어서 중력이 다른 구역을 만들어요',
     variants: [
-      { id: 'moon', label: '🌙 달 (약하게)' }, { id: 'zero', label: '🛰️ 무중력' },
-      { id: 'up', label: '🙃 거꾸로' }, { id: 'jupiter', label: '🪐 목성 (세게)' },
+      { id: 'moon', label: '달 (약하게)' }, { id: 'zero', label: '무중력' },
+      { id: 'up', label: '거꾸로' }, { id: 'jupiter', label: '목성 (세게)' },
     ],
   },
   blast: { id: 'blast', icon: '💥', name: '펑!', tip: '누른 곳에서 바람이 펑 터져요' },
@@ -282,10 +282,10 @@ export class ToolController {
     if (t === 'gzone') {
       const v = this.state.variant.gzone ?? 'moon';
       const presets: Record<string, { g: Vec; label: string; color: string }> = {
-        moon: { g: { x: 0, y: 0.17 }, label: '🌙 달', color: 'rgba(200,200,230,0.25)' },
-        zero: { g: { x: 0, y: 0 }, label: '🛰️ 무중력', color: 'rgba(120,120,255,0.14)' },
-        up: { g: { x: 0, y: -0.7 }, label: '🙃 거꾸로', color: 'rgba(255,140,200,0.18)' },
-        jupiter: { g: { x: 0, y: 2.5 }, label: '🪐 목성', color: 'rgba(255,170,90,0.2)' },
+        moon: { g: { x: 0, y: 0.17 }, label: '달', color: 'rgba(200,200,230,0.25)' },
+        zero: { g: { x: 0, y: 0 }, label: '무중력', color: 'rgba(120,120,255,0.14)' },
+        up: { g: { x: 0, y: -0.7 }, label: '거꾸로', color: 'rgba(255,140,200,0.18)' },
+        jupiter: { g: { x: 0, y: 2.5 }, label: '목성', color: 'rgba(255,170,90,0.2)' },
       };
       const pr = presets[v];
       sim.zone({ kind: 'gravity', x, y, w, h, g: pr.g, label: pr.label, color: pr.color, user: true });
@@ -382,9 +382,16 @@ export class ToolController {
       ctx.beginPath(); ctx.moveTo(g.a.point.x, g.a.point.y); ctx.lineTo(g.cur.x, g.cur.y); ctx.stroke();
     } else if (g?.mode === 'pour' || (!g && this.state.tool === 'drop' && this.hover)) {
       const p = g?.mode === 'pour' ? g.cur : this.hover!;
-      ctx.font = '40px system-ui, "Apple Color Emoji"';
-      ctx.textAlign = 'center';
-      ctx.fillText('🚿', p.x, p.y - 30);
+      // 물이 나오는 노즐 표시
+      ctx.setLineDash([]);
+      ctx.strokeStyle = 'rgba(30,110,200,0.7)';
+      ctx.fillStyle = 'rgba(61,139,253,0.15)';
+      ctx.lineWidth = 3;
+      ctx.beginPath(); ctx.arc(p.x, p.y - 34, 14, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+      ctx.lineCap = 'round';
+      for (const dx of [-8, 0, 8]) {
+        ctx.beginPath(); ctx.moveTo(p.x + dx, p.y - 14); ctx.lineTo(p.x + dx * 1.3, p.y - 2); ctx.stroke();
+      }
     }
     if ((this.state.tool === 'erase' || this.state.tool === 'blast') && this.hover) {
       ctx.strokeStyle = this.state.tool === 'erase' ? 'rgba(90,90,90,0.5)' : 'rgba(251,133,0,0.5)';

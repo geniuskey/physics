@@ -8,12 +8,12 @@ const { Body, Bodies } = Matter;
 export type Cat = 'gravity' | 'friction' | 'fluid' | 'em' | 'collision' | 'free';
 
 export const CATS: Record<Cat, { name: string; emoji: string; color: string }> = {
-  gravity: { name: '중력', emoji: '🌍', color: '#7b61ff' },
-  friction: { name: '마찰', emoji: '🛷', color: '#ff8c42' },
-  fluid: { name: '물과 바람', emoji: '💧', color: '#1ea7fd' },
-  em: { name: '전기와 자석', emoji: '⚡', color: '#f4b400' },
-  collision: { name: '충돌', emoji: '💥', color: '#ef476f' },
-  free: { name: '자유', emoji: '🧪', color: '#06a77d' },
+  gravity: { name: '중력', emoji: '🌍', color: '#5b5bd6' },
+  friction: { name: '마찰', emoji: '🛷', color: '#d4691b' },
+  fluid: { name: '물과 바람', emoji: '💧', color: '#0d82c4' },
+  em: { name: '전기와 자석', emoji: '⚡', color: '#b7860b' },
+  collision: { name: '충돌', emoji: '💥', color: '#d33f5f' },
+  free: { name: '자유', emoji: '🧪', color: '#13946f' },
 };
 
 type Hook = (ctx: CanvasRenderingContext2D, sim: Sim, t: number) => void;
@@ -79,14 +79,14 @@ export const SCENES: Scene[] = [
     theme: 'sky',
     tools: ['hand', 'ball', 'box', 'erase'],
     tool: 'hand',
-    tips: ['⬇️ 떨어뜨리기를 눌러 경주를 시작해요', '🌬️ 공기를 없애고 다시 떨어뜨려 보세요', '깃털이 볼링공을 따라잡을 수 있을까요?'],
+    tips: ['“떨어뜨리기”를 눌러 경주를 시작해요', '공기를 없애고 다시 떨어뜨려 보세요', '깃털이 볼링공을 따라잡을 수 있을까요?'],
     why: '모든 물체는 중력 때문에 똑같이 빨라지며 떨어져요. 깃털이 느린 건 공기가 붙잡기 때문이에요. 공기가 없는 달에서 실제로 해봤더니 망치와 깃털이 동시에 떨어졌대요!',
     build(sim) {
       sim.bounds();
       const defs = [
-        { name: '🎳 볼링공', x: 400, make: (x: number) => sim.ball(x, 150, 36, 'stone', { color: '#3c3c64', stroke: '#22223a', face: true, static: true, nopin: true }) },
-        { name: '🍎 사과', x: 800, make: (x: number) => sim.ball(x, 150, 26, 'wood', { color: '#e63946', stroke: '#9d0208', deco: 'apple', static: true, nopin: true }) },
-        { name: '🪶 깃털', x: 1200, make: (x: number) => sim.ball(x, 150, 26, 'feather', { ...clear, deco: 'feather', static: true, nopin: true }) },
+        { name: '볼링공', x: 400, make: (x: number) => sim.ball(x, 150, 36, 'stone', { color: '#3c3c64', stroke: '#22223a', face: true, static: true, nopin: true }) },
+        { name: '사과', x: 800, make: (x: number) => sim.ball(x, 150, 26, 'wood', { color: '#e63946', stroke: '#9d0208', deco: 'apple', static: true, nopin: true }) },
+        { name: '깃털', x: 1200, make: (x: number) => sim.ball(x, 150, 26, 'feather', { ...clear, deco: 'feather', static: true, nopin: true }) },
       ];
       let items: MBody[] = [];
       let start = 0;
@@ -117,7 +117,7 @@ export const SCENES: Scene[] = [
             }
           });
         },
-        hud: () => `${sim.air > 0 ? '🌬️ 공기 있음' : '🚀 공기 없음 (진공)'}${results.length ? ' · ' + results.join(' · ') : ''}`,
+        hud: () => `${sim.air > 0 ? '공기 있음' : '공기 없음 (진공)'}${results.length ? ' · ' + results.join(' · ') : ''}`,
         back: (ctx) => {
           ctx.strokeStyle = 'rgba(80,60,120,0.35)';
           ctx.setLineDash([12, 10]);
@@ -143,20 +143,20 @@ export const SCENES: Scene[] = [
     tools: ['hand', 'ball', 'box', 'blast', 'erase'],
     tool: 'ball',
     mat: 'rubber',
-    tips: ['🦘 모두 점프! 를 눌러보세요', '같은 힘으로 뛰어도 높이가 달라요', '공을 던져서 포물선을 비교해 보세요'],
+    tips: ['“모두 점프”를 눌러보세요', '같은 힘으로 뛰어도 높이가 달라요', '공을 던져서 포물선을 비교해 보세요'],
     why: '행성이 무겁고 클수록 끌어당기는 힘(중력)이 세요. 달의 중력은 지구의 6분의 1이라 훨씬 높이, 훨씬 천천히 떨어져요. 목성에서는 2.5배나 무거워져요!',
     build(sim) {
       sim.bounds();
       const cols = [
-        { n: '🌙 달 ×0.17', g: 0.17, c: 'rgba(215,215,240,0.45)' },
-        { n: '🔴 화성 ×0.38', g: 0.38, c: 'rgba(255,160,120,0.22)' },
-        { n: '🌍 지구 ×1', g: 1, c: 'rgba(120,210,150,0.2)' },
-        { n: '🪐 목성 ×2.5', g: 2.5, c: 'rgba(255,190,110,0.28)' },
+        { n: '달 ×0.17', g: 0.17, c: 'rgba(215,215,240,0.45)' },
+        { n: '화성 ×0.38', g: 0.38, c: 'rgba(255,160,120,0.22)' },
+        { n: '지구 ×1', g: 1, c: 'rgba(120,210,150,0.2)' },
+        { n: '목성 ×2.5', g: 2.5, c: 'rgba(255,190,110,0.28)' },
       ];
       const cw = sim.W / 4;
       cols.forEach((c, i) => {
         sim.zone({ kind: 'gravity', x: i * cw, y: -3000, w: cw, h: sim.H + 3000, g: { x: 0, y: c.g }, label: c.n, color: c.c, removable: false });
-        if (i) sim.wall(i * cw, (260 + FLOOR) / 2, 12, FLOOR - 260, { color: '#b8a9d9', stroke: '#8f7fb8' });
+        if (i) sim.wall(i * cw, (260 + FLOOR) / 2, 12, FLOOR - 260, { color: '#b4bac6', stroke: '#8a91a0' });
       });
       const colors = ['#c9c9e8', '#ff8a5b', '#4dabf7', '#ffb347'];
       const add = () => cols.forEach((_, i) => sim.ball(i * cw + cw / 2, FLOOR - 40, 26, 'rubber', { face: true, color: colors[i], stroke: '#555' }));
@@ -196,7 +196,7 @@ export const SCENES: Scene[] = [
     gravity: { x: 0, y: 0 },
     air: 0,
     trails: true,
-    tips: ['빈 곳을 누르고 뒤로 당겼다 놓아 행성을 던져요', '너무 약하면 별로 떨어지고, 너무 세면 멀리 날아가요', '☀️ 별을 하나 더 놓으면 어떻게 될까요?'],
+    tips: ['빈 곳을 누르고 뒤로 당겼다 놓아 행성을 던져요', '너무 약하면 별로 떨어지고, 너무 세면 멀리 날아가요', '별을 하나 더 놓으면 어떻게 될까요?'],
     why: '행성은 사실 별을 향해 계속 떨어지고 있어요. 그런데 옆으로 달리는 속도가 딱 알맞으면, 떨어지는 만큼 옆으로 비켜 가서 영원히 빙글빙글 돌게 돼요. 이게 궤도예요!',
     build(sim) {
       const sun = sim.star(800, 450, 48, 70, { removable: false });
@@ -233,7 +233,7 @@ export const SCENES: Scene[] = [
     tools: ['ball', 'hand', 'box', 'plank', 'wall', 'erase'],
     tool: 'ball',
     mat: 'rubber',
-    tips: ['빈 곳을 누르고 뒤로 당겼다 놓으면 슛!', '점선이 공이 날아갈 길이에요', '⚙️ 설정에서 중력을 달로 바꾸고 쏴보세요'],
+    tips: ['빈 곳을 누르고 뒤로 당겼다 놓으면 슛!', '점선이 공이 날아갈 길이에요', '설정에서 중력을 달로 바꾸고 쏴보세요'],
     why: '던진 공은 앞으로 나아가는 동안 중력이 계속 아래로 끌어당겨요. 그래서 곧게 날아가지 않고 무지개 모양(포물선)으로 휘어져요.',
     build(sim) {
       sim.bounds();
@@ -254,7 +254,7 @@ export const SCENES: Scene[] = [
           sim.confetti(1308, 470);
           sim.text(1308, 380, score % 5 === 0 ? `${score}골! 대단해요!` : '골인!', '#f77f00');
         },
-        hud: () => `🏀 골: ${score}`,
+        hud: () => `골: ${score}`,
         actions: [{ label: '공 더 주기', icon: '🏀', run: () => { ball(200, 500); ball(260, 500); } }],
         back: (ctx) => {
           ctx.strokeStyle = 'rgba(255,255,255,0.9)';
@@ -289,15 +289,15 @@ export const SCENES: Scene[] = [
     tools: ['box', 'ball', 'hand', 'erase'],
     tool: 'box',
     mat: 'ice',
-    tips: ['🏁 출발! 을 눌러보세요', '세 레인은 바닥이 각각 얼음·나무·고무예요', '상자를 다른 레인에 던져 넣어 보세요. 어디서 제일 멀리 갈까요?'],
+    tips: ['“출발”을 눌러보세요', '세 레인은 바닥이 각각 얼음·나무·고무예요', '상자를 다른 레인에 던져 넣어 보세요. 어디서 제일 멀리 갈까요?'],
     why: '맞닿은 면이 서로 붙잡는 힘을 마찰이라고 해요. 매끈한 얼음은 마찰이 거의 없어 쭉 미끄러지고, 고무는 마찰이 커서 꽉 붙잡고 버텨요. 겨울에 신발 밑창이 고무인 이유죠!',
     build(sim) {
       sim.bounds({ ceiling: false });
       // 엔진의 마찰은 '붙느냐 마느냐'에 가까워서, 스르륵 미끄러지는 나무는 레인 전체에 일정한 감속을 줘서 흉내 내요
       const lanes: { mat: MatId; name: string; friction: number; decel: number; band: string }[] = [
-        { mat: 'ice', name: '🧊 얼음', friction: 0, decel: 0, band: 'rgba(190,235,255,0.25)' },
-        { mat: 'wood', name: '🪵 나무', friction: 0, decel: 0.015, band: 'rgba(224,169,109,0.16)' },
-        { mat: 'rubber', name: '🔴 고무', friction: 0.9, decel: 0.25, band: 'rgba(255,107,107,0.1)' },
+        { mat: 'ice', name: '얼음', friction: 0, decel: 0, band: 'rgba(190,235,255,0.25)' },
+        { mat: 'wood', name: '나무', friction: 0, decel: 0.015, band: 'rgba(224,169,109,0.16)' },
+        { mat: 'rubber', name: '고무', friction: 0.9, decel: 0.25, band: 'rgba(255,107,107,0.1)' },
       ];
       const ang = Math.atan2(190, 420);
       lanes.forEach((l, i) => {
@@ -306,7 +306,7 @@ export const SCENES: Scene[] = [
         const ramp = { friction: 1, frictionStatic: 0, color: '#9c89b8', stroke: '#6f5d94' };
         sim.line(40, y0, 460, y0 + 190, 16, ramp);
         sim.line(460, y0 + 190, 1560, y0 + 190, 16, ramp);
-        sim.wall(1560, y0 + 140, 16, 100, { color: '#9c89b8', stroke: '#6f5d94' });
+        sim.wall(1560, y0 + 140, 16, 100, { color: '#8f96a4', stroke: '#646b7a' });
       });
       let blocks: MBody[] = [];
       let start = 0;
@@ -364,9 +364,9 @@ export const SCENES: Scene[] = [
     build(sim) {
       sim.bounds({ ceiling: true, floor: sim.H, color: '#8aa9c4' });
       const lanes = [
-        { name: '🧊 얼음판', decel: 0.045, c: 'rgba(190,230,255,0.55)' },
-        { name: '🪵 나무 마루', decel: 0.12, c: 'rgba(222,184,135,0.6)' },
-        { name: '🌱 잔디밭', decel: 0.3, c: 'rgba(130,200,100,0.55)' },
+        { name: '얼음판', decel: 0.045, c: 'rgba(190,230,255,0.55)' },
+        { name: '나무 마루', decel: 0.12, c: 'rgba(222,184,135,0.6)' },
+        { name: '잔디밭', decel: 0.3, c: 'rgba(130,200,100,0.55)' },
       ];
       const lh = sim.H / 3;
       lanes.forEach((l, i) => {
@@ -405,7 +405,7 @@ export const SCENES: Scene[] = [
     tools: ['box', 'ball', 'tri', 'plank', 'hand', 'water', 'blast', 'erase'],
     tool: 'box',
     mat: 'wood',
-    tips: ['아래에서 재료를 바꿔가며 물에 넣어보세요', '🧊 얼음은 얼마나 잠길까요?', '나무 판자 위에 쇠공을 올리면?'],
+    tips: ['아래에서 재료를 바꿔가며 물에 넣어보세요', '얼음은 얼마나 잠길까요?', '나무 판자 위에 쇠공을 올리면?'],
     why: '물은 잠긴 부분만큼 물체를 위로 밀어 올려요(부력). 물보다 가벼운 나무·얼음은 밀어 올리는 힘이 이겨서 떠요. 같은 크기라도 훨씬 무거운 쇠와 돌은 가라앉아요.',
     build(sim) {
       sim.bounds({ ceiling: true });
@@ -436,7 +436,7 @@ export const SCENES: Scene[] = [
     theme: 'sky',
     tools: ['drop', 'ball', 'box', 'hand', 'wall', 'erase', 'blast'],
     tool: 'drop',
-    tips: ['깔때기 위에서 꾹 누르고 있으면 물이 쏟아져요', '나무배에 상자를 실어보세요. 몇 개까지 버틸까요?', '✏️ 벽 긋기로 물길을 만들어 보세요'],
+    tips: ['깔때기 위에서 꾹 누르고 있으면 물이 쏟아져요', '나무배에 상자를 실어보세요. 몇 개까지 버틸까요?', '벽 긋기로 물길을 만들어 보세요'],
     why: '물은 정해진 모양이 없어서 그릇 모양대로 흘러가요. 흐르는 물이 물레방아 날개를 밀면 바퀴가 돌아요. 배는 물을 밀어낸 만큼 떠오르는 힘을 받아요.',
     build(sim) {
       sim.bounds();
@@ -462,7 +462,7 @@ export const SCENES: Scene[] = [
       void boat;
       return {
         actions: [{ label: '물 비우기', icon: '🫗', run: () => [...sim.drops].forEach((b) => sim.remove(b)) }],
-        hud: () => `💧 물방울 ${sim.drops.length}개`,
+        hud: () => `물방울 ${sim.drops.length}개`,
       };
     },
   },
@@ -476,7 +476,7 @@ export const SCENES: Scene[] = [
     tools: ['ball', 'box', 'wind', 'hand', 'blast', 'erase'],
     tool: 'ball',
     mat: 'feather',
-    tips: ['깃털 공을 선풍기 위에 떨어뜨려 보세요', '쇠공은 바람에 날아갈까요?', '🌬️ 바람 도구로 끌어서 새 바람길을 만들어요'],
+    tips: ['깃털 공을 선풍기 위에 떨어뜨려 보세요', '쇠공은 바람에 날아갈까요?', '바람 도구로 끌어서 새 바람길을 만들어요'],
     why: '바람은 움직이는 공기예요. 공기가 물체에 부딪히며 밀어요. 가볍고 넓은 물체일수록 잘 밀려나고, 무겁고 작은 물체는 꿈쩍도 안 해요.',
     build(sim) {
       sim.bounds({ ceiling: true });
@@ -500,7 +500,7 @@ export const SCENES: Scene[] = [
           sim.confetti(1425, 260);
           sim.text(1425, 120, '골인!', '#2a9d8f');
         },
-        hud: () => `🧺 바구니: ${n}`,
+        hud: () => `바구니: ${n}`,
         back: (ctx, _s, t) => {
           // 선풍기
           const fx = 230, fy = FLOOR - 10;
@@ -513,7 +513,7 @@ export const SCENES: Scene[] = [
           ctx.fillStyle = '#74c0fc';
           for (let k = 0; k < 4; k++) { ctx.rotate(Math.PI / 2); ctx.beginPath(); ctx.ellipse(55, 0, 55, 18, 0, 0, 7); ctx.fill(); }
           ctx.restore();
-          label(ctx, '🧺 여기로!', 1425, 110, 'rgba(140,90,43,0.8)', 26);
+          label(ctx, '여기로!', 1425, 110, 'rgba(140,90,43,0.8)', 26);
         },
       };
     },
@@ -531,7 +531,7 @@ export const SCENES: Scene[] = [
     tool: 'plus',
     gravity: { x: 0, y: 0 },
     field: true,
-    tips: ['➕ 와 ➖ 구슬을 여기저기 놓아보세요', '주황 화살표는 + 구슬이 밀려가는 방향이에요', '구슬을 옆으로 휙 던지면 빙글빙글 궤도를 돌아요'],
+    tips: ['+ 와 − 구슬을 여기저기 놓아보세요', '주황 화살표는 + 구슬이 밀려가는 방향이에요', '구슬을 옆으로 휙 던지면 빙글빙글 궤도를 돌아요'],
     why: '전기에는 +와 − 두 종류가 있어요. 서로 다르면 끌어당기고, 같으면 밀어내요. 머리카락이 풍선에 달라붙는 것도 바로 이 힘이에요!',
     build(sim) {
       sim.bounds({ ceiling: true, floor: sim.H, color: '#3d3a6b' });
@@ -567,7 +567,7 @@ export const SCENES: Scene[] = [
     gravity: { x: 0, y: 0 },
     air: 5,
     field: true,
-    tips: ['자석 끝을 잡고 돌려서 N극끼리 마주 보게 해보세요', '⚽ 공 도구로 쇠구슬을 더 뿌려보세요', '나무 상자는 자석에 붙을까요?'],
+    tips: ['자석 끝을 잡고 돌려서 N극끼리 마주 보게 해보세요', '공 도구로 쇠구슬을 더 뿌려보세요', '나무 상자는 자석에 붙을까요?'],
     why: '자석에는 N극과 S극이 있어요. 다른 극끼리는 끌어당기고, 같은 극끼리는 밀어내요. 쇠는 자석 가까이 가면 잠깐 자석처럼 변해서 철썩 달라붙어요. 나무나 고무는 그렇지 않아요.',
     build(sim) {
       sim.bounds({ ceiling: true, floor: sim.H, color: '#b5a48a' });
@@ -683,7 +683,7 @@ export const SCENES: Scene[] = [
     theme: 'sky',
     tools: ['domino', 'ball', 'box', 'plank', 'hand', 'blast', 'erase'],
     tool: 'domino',
-    tips: ['🎳 진자 공 놓기를 눌러 시작해요', '🁢 도미노 도구로 나만의 길을 만들어 보세요', '간격이 너무 넓으면 어떻게 될까요?'],
+    tips: ['“진자 공 놓기”를 눌러 시작해요', '도미노 도구로 나만의 길을 만들어 보세요', '간격이 너무 넓으면 어떻게 될까요?'],
     why: '쓰러지는 도미노는 옆 도미노를 톡 밀어요. 작은 도미노도 자기보다 1.5배쯤 큰 도미노를 쓰러뜨릴 수 있어서, 점점 큰 것까지 쓰러뜨릴 수 있어요.',
     build(sim) {
       sim.bounds();
@@ -730,7 +730,7 @@ export const SCENES: Scene[] = [
         },
         hud: () => {
           const down = dominos.filter((d) => Math.abs(d.angle) > 0.6).length;
-          return `🁢 쓰러진 도미노: ${down} / ${dominos.length}`;
+          return `쓰러진 도미노: ${down} / ${dominos.length}`;
         },
       };
     },
@@ -745,7 +745,7 @@ export const SCENES: Scene[] = [
     tools: ['box', 'ball', 'plank', 'hand', 'rope', 'blast', 'erase'],
     tool: 'box',
     mat: 'wood',
-    tips: ['⛓️ 철거 공 놓기 를 눌러보세요', '📦 상자로 나만의 탑을 쌓아보세요', '쇠공을 던지면 나무공보다 얼마나 셀까요?'],
+    tips: ['“철거 공 놓기”를 눌러보세요', '상자로 나만의 탑을 쌓아보세요', '쇠공을 던지면 나무공보다 얼마나 셀까요?'],
     why: '무겁고 빠른 물체일수록 부딪힐 때 더 큰 힘을 줘요(운동량). 그래서 무거운 쇠공이 흔들리며 내려오면 탑이 와르르 무너져요.',
     build(sim) {
       sim.bounds();
@@ -778,7 +778,7 @@ export const SCENES: Scene[] = [
         ],
         hud: () => {
           const fell = boxes.filter((b, i) => b.position.y - starts[i].y > 30 || Math.abs(b.position.x - starts[i].x) > 40).length;
-          return `📦 무너진 상자: ${fell} / ${boxes.length}`;
+          return `무너진 상자: ${fell} / ${boxes.length}`;
         },
         back: (ctx) => {
           ctx.fillStyle = '#495057';
@@ -844,11 +844,11 @@ export const SCENES: Scene[] = [
           } else {
             potted++;
             sim.confetti(p.x, p.y);
-            sim.text(p.x, p.y + (p.y < 450 ? 60 : -60), potted === 15 ? '전부 넣었어요! 🎉' : '쏙!', '#ffe066');
+            sim.text(p.x, p.y + (p.y < 450 ? 60 : -60), potted === 15 ? '전부 넣었어요!' : '쏙!', '#ffe066');
           }
         },
         tick: () => { if (!cue && respawnAt && sim.steps >= respawnAt) { respawnAt = 0; placeCue(); } },
-        hud: () => `🎱 넣은 공: ${potted} / 15`,
+        hud: () => `넣은 공: ${potted} / 15`,
         actions: [{ label: '다시 놓기', icon: '🔺', run: rack }],
         back: (ctx) => {
           for (const p of pockets) {
@@ -874,7 +874,7 @@ export const SCENES: Scene[] = [
     tools: ['hand', 'ball', 'box', 'tri', 'plank', 'domino', 'drop', 'plus', 'minus', 'magnet', 'star', 'wall', 'rope', 'spring', 'water', 'wind', 'field', 'gzone', 'blast', 'pin', 'erase'],
     tool: 'ball',
     mat: 'rubber',
-    tips: ['🪢 막대 줄로 공을 빈 곳에 매달면 그네가 돼요', '🌀 용수철로 상자 두 개를 이어보세요', '🌙 중력 구역으로 둥실 떠오르는 방을 만들어요'],
+    tips: ['막대 줄로 공을 빈 곳에 매달면 그네가 돼요', '용수철로 상자 두 개를 이어보세요', '중력 구역으로 둥실 떠오르는 방을 만들어요'],
     why: '여기서는 정답이 없어요. "이렇게 하면 어떻게 될까?" 하고 궁금해하는 것, 그게 바로 과학자가 하는 일이에요.',
     build(sim) {
       sim.bounds();
