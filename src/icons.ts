@@ -16,6 +16,7 @@ const P: Record<string, string> = {
   down: '<path d="M12 5v14M6 13l6 6 6-6"/>',
   more: '<circle cx="12" cy="12" r="9"/><path d="M12 8v8M8 12h8"/>',
   less: '<circle cx="12" cy="12" r="9"/><path d="M8 12h8"/>',
+  'star-badge': '<path d="M12 3l2.6 5.6 6 .7-4.5 4.1 1.2 6L12 16.4 6.7 19.4l1.2-6L3.4 9.3l6-.7z"/>',
   // ── 도구 ──
   hand: '<path d="M18 11V6a2 2 0 0 0-4 0v5"/><path d="M14 10V4a2 2 0 0 0-4 0v6"/><path d="M10 10.5V6a2 2 0 0 0-4 0v8"/><path d="M18 8a2 2 0 0 1 4 0v6a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.9-6-2.4l-3.6-3.6a2 2 0 0 1 2.8-2.8L7 15"/>',
   cue: '<circle cx="7" cy="17" r="4"/><path d="M11 13l10-10"/>',

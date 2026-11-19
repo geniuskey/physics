@@ -25,6 +25,8 @@ export interface RenderOpts {
   shake?: number;
   /** 세상 밖은 그리지 않기 (기본 켜짐) */
   clip?: boolean;
+  /** 세상 위쪽으로 이만큼(세상 단위)은 하늘로 보고 그려요 */
+  skyAbove?: number;
 }
 
 // 별·구름 위치는 고정 (매 프레임 같은 자리)
@@ -49,7 +51,8 @@ export function render(ctx: CanvasRenderingContext2D, sim: Sim, v: View, o: Rend
   ctx.save();
   if (o.clip !== false) {
     ctx.beginPath();
-    ctx.rect(0, 0, sim.W, sim.H);
+    const top = o.skyAbove ?? 0;
+    ctx.rect(0, -top, sim.W, sim.H + top);
     ctx.clip();
   }
   worldDecor(ctx, sim, o.theme);
@@ -394,8 +397,8 @@ function drawBody(ctx: CanvasRenderingContext2D, b: MBody, t: number) {
       ctx.ellipse(x - r * 0.35, y - r * 0.4, r * 0.35, r * 0.22, -0.6, 0, Math.PI * 2);
       ctx.fill();
     }
-    if (d.mat === 'wood' || d.mat === 'stone' || d.mat === 'metal' || d.mat === 'ice') {
-      // 굴러가는 게 보이도록 줄무늬
+    if (!d.face && (d.mat === 'wood' || d.mat === 'stone' || d.mat === 'metal' || d.mat === 'ice')) {
+      // 굴러가는 게 보이도록 줄무늬 (얼굴 달린 공은 얼굴이 돌아가니 필요 없어요)
       ctx.strokeStyle = 'rgba(0,0,0,0.15)';
       ctx.lineWidth = 3;
       ctx.beginPath();

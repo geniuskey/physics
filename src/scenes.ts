@@ -48,6 +48,12 @@ export interface Scene {
   trails?: boolean;
   tips: string[];
   why: string;
+  /** 처음 온 사람에게 추천하는 실험 */
+  starter?: boolean;
+  /** 실험 가이드 카드 위치를 직접 정할 때 (기본은 물체를 피해 자동) */
+  guideAt?: 'tl' | 'tr' | 'bl' | 'br';
+  /** 세로 화면에서 확대할 때 처음 보여줄 곳(세상 x) */
+  focusX?: number;
   build(sim: Sim): Runtime | void;
 }
 
@@ -73,6 +79,7 @@ export const SCENES: Scene[] = [
   // ───────────────────────────── 중력 ─────────────────────────────
   {
     id: 'drop-race',
+    starter: true,
     title: '누가 먼저 떨어질까?',
     emoji: '🪶',
     cat: 'gravity',
@@ -398,6 +405,7 @@ export const SCENES: Scene[] = [
   // ───────────────────────────── 물과 바람 ─────────────────────────────
   {
     id: 'float-sink',
+    starter: true,
     title: '뜰까, 가라앉을까?',
     emoji: '🛁',
     cat: 'fluid',
@@ -738,6 +746,7 @@ export const SCENES: Scene[] = [
   },
   {
     id: 'tower',
+    starter: true,
     title: '탑 무너뜨리기',
     emoji: '🏗️',
     cat: 'collision',

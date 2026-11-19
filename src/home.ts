@@ -11,6 +11,9 @@ let lastFilter: Cat | 'all' = 'all';
 
 export function mountHome(root: HTMLElement) {
   const free = SCENES.find((s) => s.id === 'free')!;
+  const first = SCENES.find((s) => s.starter)!;
+  // 처음 온 사람을 위한 추천 실험이 목록 맨 앞에 와요
+  const ordered = [...SCENES.filter((s) => s.starter), ...SCENES.filter((s) => !s.starter)];
   const cats = (Object.keys(CATS) as Cat[]).filter((c) => c !== 'free');
   root.innerHTML = `
   <div class="home">
@@ -31,18 +34,17 @@ export function mountHome(root: HTMLElement) {
           <p class="lead">중력, 마찰, 부력, 전기와 자석, 충돌. 공식을 몰라도 괜찮아요.
             물체를 놓고, 던지고, 조건을 바꿔 보면 원리가 눈에 보입니다.</p>
           <div class="cta">
-            <a class="btn primary" href="#experiments">실험 둘러보기 ${icon('down', 18)}</a>
-            <a class="btn" href="#/play/${free.id}">자유 실험 열기</a>
+            <a class="btn primary" href="#/play/${first.id}">${icon('play', 18)}첫 실험 시작하기</a>
+            <a class="btn" href="#experiments">실험 둘러보기 ${icon('down', 18)}</a>
           </div>
+          <ol class="steps">
+            <li><b>고르기</b><span>궁금한 실험을 골라요</span></li>
+            <li><b>만지기</b><span>놓고 던지고 바꿔 봐요</span></li>
+            <li><b>알아보기</b><span>“왜 그럴까?”로 확인해요</span></li>
+          </ol>
           <p class="tap-hint">배경을 클릭하면 물체가 떨어져요</p>
         </div>
       </div>
-    </section>
-
-    <section class="how">
-      <div class="step"><span class="num">01</span><h3>실험 고르기</h3><p>궁금한 주제를 고르세요. 각 실험은 하나의 원리에 집중해요.</p></div>
-      <div class="step"><span class="num">02</span><h3>직접 조작하기</h3><p>클릭하면 놓이고, 끌었다 놓으면 날아가요. 중력·공기 같은 조건도 바꿀 수 있어요.</p></div>
-      <div class="step"><span class="num">03</span><h3>원리 확인하기</h3><p>실험 가이드의 “왜 그럴까?”에서 일어난 일을 쉬운 말로 설명해 드려요.</p></div>
     </section>
 
     <section class="experiments" id="experiments">
@@ -51,13 +53,13 @@ export function mountHome(root: HTMLElement) {
           <h2>실험 목록</h2>
           <p class="sec-sub">${SCENES.length}개의 실험 · 설치나 가입 없이 브라우저에서 바로 실행돼요</p>
         </div>
-        <div class="filters" role="tablist">
-          <button class="filter" data-f="all">전체</button>
-          ${cats.map((c) => `<button class="filter" data-f="${c}" style="--c:${CATS[c].color}">${icon('cat-' + c, 15)}${CATS[c].name}</button>`).join('')}
+        <div class="filters" role="tablist" aria-label="주제별로 보기">
+          <button class="filter" role="tab" data-f="all">전체</button>
+          ${cats.map((c) => `<button class="filter" role="tab" data-f="${c}" style="--c:${CATS[c].color}">${icon('cat-' + c, 15)}${CATS[c].name}</button>`).join('')}
         </div>
       </div>
       <div class="grid">
-        ${SCENES.map((s) => card(s)).join('')}
+        ${ordered.map((s) => card(s)).join('')}
       </div>
     </section>
 
@@ -73,7 +75,10 @@ export function mountHome(root: HTMLElement) {
   const grid = root.querySelector('.grid')!;
   const applyFilter = (f: Cat | 'all') => {
     lastFilter = f;
-    root.querySelectorAll<HTMLButtonElement>('.filter').forEach((b) => b.classList.toggle('on', b.dataset.f === f));
+    root.querySelectorAll<HTMLButtonElement>('.filter').forEach((b) => {
+      b.classList.toggle('on', b.dataset.f === f);
+      b.setAttribute('aria-selected', String(b.dataset.f === f));
+    });
     grid.querySelectorAll<HTMLElement>('.card').forEach((c) => {
       c.hidden = f !== 'all' && c.dataset.cat !== f && c.dataset.cat !== 'free';
     });
@@ -95,7 +100,7 @@ export function mountHome(root: HTMLElement) {
 function card(s: Scene) {
   const c = CATS[s.cat];
   return `<a class="card${s.cat === 'free' ? ' free' : ''}" href="#/play/${s.id}" data-cat="${s.cat}" style="--c:${c.color}">
-    <div class="thumb"><canvas data-scene="${s.id}" width="480" height="270"></canvas></div>
+    <div class="thumb"><canvas data-scene="${s.id}" width="480" height="270"></canvas>${s.starter ? `<span class="badge">${icon('star-badge', 13)}처음이라면 추천</span>` : ''}</div>
     <div class="card-body">
       <span class="tag">${icon('cat-' + s.cat, 14)}${c.name}</span>
       <h3>${esc(s.title)}</h3>

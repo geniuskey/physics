@@ -3,7 +3,7 @@ import { MATERIALS, PICKABLE } from './materials';
 import { icon } from './icons';
 import { fitView, render, toWorld, type View } from './render';
 import { CATS, type Runtime, type Scene } from './scenes';
-import { Sim } from './sim';
+import { D, Sim } from './sim';
 import { ALL_TOOLS, SIZES, TOOLS, ToolController, type ToolId, type ToolState } from './tools';
 
 const GRAVITY = [
@@ -39,6 +39,7 @@ export function mountPlay(root: HTMLElement, scene: Scene) {
         <span class="crumb">${icon('cat-' + scene.cat, 14)}${cat.name}</span>
         <h1>${esc(scene.title)}</h1>
       </div>
+      <div class="subbar"></div>
       <div class="pctl">
         <div class="btngroup">
           <button class="ib" data-act="pause" title="일시정지 / 재생 (Space)" aria-label="일시정지">${icon('pause')}</button>
@@ -56,8 +57,6 @@ export function mountPlay(root: HTMLElement, scene: Scene) {
     </header>
     <div class="pmain">
       <nav class="tools" aria-label="도구"></nav>
-      <div class="stagecol">
-      <div class="subbar"></div>
       <div class="stage">
         <canvas></canvas>
         <div class="hint">
@@ -69,8 +68,11 @@ export function mountPlay(root: HTMLElement, scene: Scene) {
         </div>
         <div class="hud" hidden></div>
         <div class="actions"></div>
-        <div class="toast" hidden></div>
-        <div class="paused-badge" hidden>${icon('pause', 14)} 일시정지됨 · Space 키로 재생</div>
+        <div class="panbar" hidden aria-hidden="true"><i></i></div>
+        <div class="notices">
+          <div class="paused-badge" hidden>${icon('pause', 14)} 일시정지됨 · Space 키로 재생</div>
+          <div class="toast" role="status" hidden></div>
+        </div>
         <aside class="settings" hidden>
           <div class="set-head"><b>환경 설정</b><button class="ib sm" data-act="close-settings" aria-label="닫기">${icon('close', 16)}</button></div>
           <div class="set-group"><span>중력</span><div class="chips" data-set="gravity">${GRAVITY.map((g) => `<button class="chipbtn" data-v="${g.id}">${g.label}</button>`).join('')}</div></div>
@@ -79,10 +81,10 @@ export function mountPlay(root: HTMLElement, scene: Scene) {
           <div class="set-group"><span>표시</span>
             <button class="switch" data-toggle="trails"><span>이동 경로</span><i></i></button>
             <button class="switch" data-toggle="field"><span>힘 화살표</span><i></i></button>
+            <button class="switch" data-toggle="sound"><span>소리</span><i></i></button>
           </div>
           <p class="set-note"><kbd>Space</kbd> 일시정지 · <kbd>Ctrl</kbd>+<kbd>Z</kbd> 되돌리기 · <kbd>1</kbd>–<kbd>9</kbd> 도구 선택</p>
         </aside>
-      </div>
       </div>
     </div>
   </div>`;
@@ -98,6 +100,8 @@ export function mountPlay(root: HTMLElement, scene: Scene) {
   const toast = $<HTMLDivElement>('.toast');
   const settings = $<HTMLElement>('.settings');
   const pausedBadge = $<HTMLDivElement>('.paused-badge');
+  const panbar = $<HTMLDivElement>('.panbar');
+  const hint = $<HTMLDivElement>('.hint');
 
   const state: ToolState = { tool: scene.tool, mat: scene.mat ?? 'rubber', size: 1, variant: {} };
   let sim!: Sim;
@@ -106,6 +110,10 @@ export function mountPlay(root: HTMLElement, scene: Scene) {
   let view: View = fitView(1, 1, 1, 1, 1);
   let shake = 0;
   let showAll = false;
+  /** 세로 화면에서 장면을 확대해 보여줄 때 카메라 중심(세상 x) */
+  let camX = (scene.W ?? 1600) / 2;
+  let canPan = false;
+  let panTold = false;
 
   // ───────────────────── 장면 만들기 ─────────────────────
   function build() {
@@ -127,6 +135,7 @@ export function mountPlay(root: HTMLElement, scene: Scene) {
     };
     renderActions();
     syncSettings();
+    camX = scene.focusX ?? sim.W / 2;
     resize();
   }
 
@@ -137,7 +146,7 @@ export function mountPlay(root: HTMLElement, scene: Scene) {
       .map((id, i) => {
         const t = TOOLS[id];
         const extra = !scene.tools.includes(id);
-        return `<button class="tool${id === state.tool ? ' on' : ''}${extra ? ' extra' : ''}" data-tool="${id}" title="${esc(t.name)}${i < 9 ? ` (${i + 1})` : ''} — ${esc(t.tip)}">
+        return `<button class="tool${id === state.tool ? ' on' : ''}${extra ? ' extra' : ''}" data-tool="${id}" aria-pressed="${id === state.tool}" title="${esc(t.name)}${i < 9 ? ` (${i + 1})` : ''} — ${esc(t.tip)}">
           ${i < 9 ? `<kbd class="tk">${i + 1}</kbd>` : ''}<span class="ti">${icon(id, 22)}</span><span class="tn">${esc(t.name)}</span></button>`;
       })
       .join('') +
@@ -152,15 +161,15 @@ export function mountPlay(root: HTMLElement, scene: Scene) {
     if (def.usesMat) {
       html += `<div class="seg">${PICKABLE.map((m) => {
         const mat = MATERIALS[m];
-        return `<button class="mat${m === state.mat ? ' on' : ''}" data-mat="${m}" title="${mat.name}: ${mat.blurb}" style="--m:${mat.color};--ms:${mat.stroke}"><i></i>${mat.name}</button>`;
+        return `<button class="mat${m === state.mat ? ' on' : ''}" data-mat="${m}" aria-pressed="${m === state.mat}" title="${mat.name}: ${mat.blurb}" style="--m:${mat.color};--ms:${mat.stroke}"><i></i>${mat.name}</button>`;
       }).join('')}</div>`;
     }
     if (def.usesSize) {
-      html += `<div class="seg">${SIZES.map((s) => `<button class="size${s.id === state.size ? ' on' : ''}" data-size="${s.id}">${s.label}</button>`).join('')}</div>`;
+      html += `<div class="seg">${SIZES.map((s) => `<button class="size${s.id === state.size ? ' on' : ''}" data-size="${s.id}" aria-pressed="${s.id === state.size}">${s.label}</button>`).join('')}</div>`;
     }
     if (def.variants) {
       const cur = state.variant[def.id] ?? def.variants[0].id;
-      html += `<div class="seg">${def.variants.map((v) => `<button class="size${v.id === cur ? ' on' : ''}" data-variant="${v.id}">${v.label}</button>`).join('')}</div>`;
+      html += `<div class="seg">${def.variants.map((v) => `<button class="size${v.id === cur ? ' on' : ''}" data-variant="${v.id}" aria-pressed="${v.id === cur}">${v.label}</button>`).join('')}</div>`;
     }
     if (def.usesMat) {
       const m = MATERIALS[state.mat];
@@ -205,7 +214,11 @@ export function mountPlay(root: HTMLElement, scene: Scene) {
   // ───────────────────── 설정 ─────────────────────
   function syncSettings() {
     const mark = (sel: string, match: (v: string) => boolean) =>
-      settings.querySelectorAll<HTMLButtonElement>(`[data-set="${sel}"] button`).forEach((b) => b.classList.toggle('on', match(b.dataset.v!)));
+      settings.querySelectorAll<HTMLButtonElement>(`[data-set="${sel}"] button`).forEach((b) => {
+        const on = match(b.dataset.v!);
+        b.classList.toggle('on', on);
+        b.setAttribute('aria-pressed', String(on));
+      });
     mark('gravity', (v) => {
       const g = GRAVITY.find((x) => x.id === v)!.g;
       return g.x === sim.gravity.x && g.y === sim.gravity.y;
@@ -219,6 +232,7 @@ export function mountPlay(root: HTMLElement, scene: Scene) {
     };
     sw('trails', sim.trails);
     sw('field', sim.field);
+    sw('sound', !isMuted());
     $<HTMLButtonElement>('[data-act="speed"]').textContent = SPEED_LABEL[sim.speed];
     const pb = $<HTMLButtonElement>('[data-act="pause"]');
     if (pb.dataset.state !== String(sim.paused)) {
@@ -266,6 +280,7 @@ export function mountPlay(root: HTMLElement, scene: Scene) {
     if (group === 'speed') sim.speed = Number(el.dataset.v);
     if (el.dataset.toggle === 'trails') sim.trails = !sim.trails;
     if (el.dataset.toggle === 'field') sim.field = !sim.field;
+    if (el.dataset.toggle === 'sound') setMuted(!isMuted());
     switch (el.dataset.act) {
       case 'pause': togglePause(); return;
       case 'speed': sim.speed = SPEEDS[(SPEEDS.indexOf(sim.speed) + 1) % SPEEDS.length]; showToast(`시뮬레이션 속도 ${SPEED_LABEL[sim.speed]}`); break;
@@ -280,42 +295,85 @@ export function mountPlay(root: HTMLElement, scene: Scene) {
   root.addEventListener('click', onClick);
 
   const hintToggle = $<HTMLButtonElement>('.hint-toggle');
-  const hint = $<HTMLDivElement>('.hint');
-  hintToggle.addEventListener('click', () => {
-    const open = hint.classList.toggle('closed');
-    hintToggle.setAttribute('aria-expanded', String(!open));
-  });
-  if (window.innerWidth < 720) hint.classList.add('closed');
+  const setHint = (open: boolean) => {
+    hint.classList.toggle('closed', !open);
+    hintToggle.setAttribute('aria-expanded', String(open));
+    if (open) placeGuide();
+  };
+  hintToggle.addEventListener('click', () => setHint(hint.classList.contains('closed')));
+  // 낮은 가로 화면(휴대폰 가로)에서는 공간이 없어 접어 두고 시작해요
+  if (window.innerHeight < 500) setHint(false);
 
   let activePointer: number | null = null;
   let touched = false;
+  /** 화면 좌표로 누르고 있는 손가락들 (두 손가락 밀기용) */
+  const pts = new Map<number, number>();
+  let pan: { baseX: number; camX: number } | null = null;
+  const midX = () => [...pts.values()].reduce((a, b) => a + b, 0) / Math.max(1, pts.size);
+  const startPan = () => { pan = { baseX: midX(), camX }; };
   const worldPos = (e: PointerEvent) => {
     const r = canvas.getBoundingClientRect();
     return toWorld(view, e.clientX - r.left, e.clientY - r.top);
   };
   canvas.addEventListener('pointerdown', (e) => {
     unlock();
-    if (activePointer !== null) return;
-    activePointer = e.pointerId;
     canvas.setPointerCapture(e.pointerId);
+    pts.set(e.pointerId, e.clientX);
+    e.preventDefault();
     closeSettings();
     // 처음 만지면 설명 카드는 살짝 접어서 놀이터를 넓게
-    if (!touched) { touched = true; hint.classList.add('closed'); }
-    ctrl.down(worldPos(e));
-    e.preventDefault();
+    if (!touched) { touched = true; setHint(false); }
+    if (pan) { startPan(); return; }
+    if (canPan && pts.size === 2) {
+      // 두 번째 손가락: 하던 동작은 취소하고 화면 밀기
+      if (activePointer !== null) { ctrl.cancel(); activePointer = null; }
+      startPan();
+      return;
+    }
+    if (activePointer !== null) return;
+    const p = worldPos(e);
+    // 잡기 도구로 빈 곳을 끌면 화면을 옆으로 밀어요
+    if (canPan && state.tool === 'hand' && !sim.bodyAt(p, 8)) { startPan(); return; }
+    activePointer = e.pointerId;
+    ctrl.down(p);
   });
   canvas.addEventListener('pointermove', (e) => {
+    if (pts.has(e.pointerId)) pts.set(e.pointerId, e.clientX);
+    if (pan) {
+      if (pts.has(e.pointerId)) setCam(pan.camX - (midX() - pan.baseX) / view.scale);
+      return;
+    }
     if (activePointer !== null && e.pointerId !== activePointer) return;
     ctrl.move(worldPos(e));
   });
-  const end = (e: PointerEvent) => {
+  const lift = (e: PointerEvent, cancelled: boolean) => {
+    if (!pts.delete(e.pointerId)) return;
+    if (pan) {
+      if (pts.size === 0) pan = null;
+      else startPan();
+      return;
+    }
     if (e.pointerId !== activePointer) return;
     activePointer = null;
-    ctrl.up(worldPos(e));
+    if (cancelled) ctrl.cancel();
+    else ctrl.up(worldPos(e));
   };
-  canvas.addEventListener('pointerup', end);
-  canvas.addEventListener('pointercancel', (e) => { if (e.pointerId === activePointer) { activePointer = null; ctrl.cancel(); } });
+  canvas.addEventListener('pointerup', (e) => lift(e, false));
+  canvas.addEventListener('pointercancel', (e) => lift(e, true));
   canvas.addEventListener('pointerleave', () => { if (activePointer === null) ctrl.hover = undefined; });
+
+  // 위쪽 막대를 끌어도 화면을 밀 수 있어요
+  panbar.addEventListener('pointerdown', (e) => {
+    panbar.setPointerCapture(e.pointerId);
+    const r = panbar.getBoundingClientRect();
+    const go = (x: number) => setCam(((x - r.left) / r.width) * sim.W);
+    go(e.clientX);
+    const mv = (ev: PointerEvent) => go(ev.clientX);
+    const up = () => { panbar.removeEventListener('pointermove', mv); panbar.removeEventListener('pointerup', up); };
+    panbar.addEventListener('pointermove', mv);
+    panbar.addEventListener('pointerup', up);
+    e.preventDefault();
+  });
 
   const onKey = (e: KeyboardEvent) => {
     if ((e.target as HTMLElement).closest('input, textarea')) return;
@@ -337,8 +395,84 @@ export function mountPlay(root: HTMLElement, scene: Scene) {
     canvas.height = Math.max(1, Math.round(r.height * dpr));
     canvas.style.width = `${r.width}px`;
     canvas.style.height = `${r.height}px`;
-    view = fitView(r.width, r.height, sim.W, sim.H, dpr);
+    updateView(r.width, r.height, dpr);
+    placeGuide();
   }
+
+  /**
+   * 화면이 장면보다 훨씬 세로로 길면(휴대폰 세로) 그냥 맞추면 장면이 손톱만 해져요.
+   * 그럴 땐 장면을 확대해서 땅을 화면 아래에 붙이고, 양옆은 밀어서 둘러보게 해요.
+   */
+  function updateView(cw: number, ch: number, dpr: number) {
+    const { W, H } = sim;
+    const fit = fitView(cw, ch, W, H, dpr);
+    const tall = cw / ch < 1 && fit.oy > ch * 0.15;
+    if (!tall) {
+      view = fit;
+      canPan = false;
+    } else {
+      // 장면 폭의 60% 이상은 보이게, 높이는 화면의 90%까지만
+      const scale = Math.max(fit.scale, Math.min((ch * 0.9) / H, cw / (W * 0.6)));
+      const visW = cw / scale;
+      canPan = visW < W - 1;
+      camX = Math.min(W - visW / 2, Math.max(visW / 2, camX));
+      view = { scale, ox: cw / 2 - camX * scale, oy: ch - H * scale, cw, ch, dpr };
+      if (canPan && !panTold) { panTold = true; showToast('양옆으로 밀면 장면을 둘러볼 수 있어요'); }
+    }
+    stage.style.setProperty('--world-top', `${Math.max(0, view.oy)}px`);
+    stage.classList.toggle('tall', tall);
+    panbar.hidden = !canPan;
+    if (canPan) {
+      const visW = cw / view.scale;
+      const th = panbar.firstElementChild as HTMLElement;
+      th.style.width = `${(visW / W) * 100}%`;
+      th.style.left = `${((camX - visW / 2) / W) * 100}%`;
+    }
+  }
+
+  function setCam(x: number) {
+    camX = x;
+    updateView(view.cw, view.ch, view.dpr);
+  }
+
+  type Corner = 'tl' | 'tr' | 'bl' | 'br';
+  /** 실험 가이드 카드가 물체를 가리지 않는 모서리를 골라요 */
+  function placeGuide() {
+    if (hint.classList.contains('closed')) return;
+    const sr = stage.getBoundingClientRect();
+    const hw = hint.offsetWidth, hh = hint.offsetHeight, m = 12;
+    const rects: Record<Corner, [number, number, number, number]> = {
+      tl: [m, m, hw, hh],
+      tr: [sr.width - m - hw, m, hw, hh],
+      bl: [m, sr.height - m - hh, hw, hh],
+      br: [sr.width - m - hw, sr.height - m - hh, hw, hh],
+    };
+    const act = actionsEl.getBoundingClientRect();
+    const overlap = (a: number[], b: number[]) =>
+      Math.max(0, Math.min(a[0] + a[2], b[0] + b[2]) - Math.max(a[0], b[0])) *
+      Math.max(0, Math.min(a[1] + a[3], b[1] + b[3]) - Math.max(a[1], b[1]));
+    const boxes: number[][] = [];
+    for (const b of sim.bodies()) {
+      const d = D(b);
+      if (!d || d.kind === 'drop') continue;
+      const w = b.bounds.max.x - b.bounds.min.x, h = b.bounds.max.y - b.bounds.min.y;
+      // 바깥 벽·바닥처럼 장면을 가로지르는 건 빼요
+      if (d.kind === 'wall' && (w > sim.W * 0.6 || h > sim.H * 0.6)) continue;
+      boxes.push([b.bounds.min.x * view.scale + view.ox, b.bounds.min.y * view.scale + view.oy, w * view.scale, h * view.scale]);
+    }
+    const order: Corner[] = scene.guideAt ? [scene.guideAt] : ['tl', 'tr', 'bl', 'br'];
+    let best: Corner = order[0], bestScore = Infinity;
+    for (const c of order) {
+      const r = rects[c];
+      let score = boxes.reduce((a, bx) => a + overlap(r, bx), 0);
+      if (act.width) score += overlap(r, [act.left - sr.left, act.top - sr.top, act.width, act.height]) * 2;
+      // 장면 밖(빈 하늘)에 있으면 더 좋아요
+      score += overlap(r, [view.ox, view.oy, sim.W * view.scale, sim.H * view.scale]) * 0.02;
+      if (score < bestScore - 1) { best = c; bestScore = score; }
+    }
+    stage.dataset.guide = best;
+  }
+
   const ro = new ResizeObserver(() => resize());
   ro.observe(stage);
 
@@ -357,6 +491,7 @@ export function mountPlay(root: HTMLElement, scene: Scene) {
       front: rt.front,
       overlay: (c) => ctrl.overlay(c),
       shake,
+      skyAbove: Math.max(0, view.oy / view.scale),
     });
     shake *= 0.85;
     if (shake < 0.5) shake = 0;
