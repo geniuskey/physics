@@ -121,12 +121,15 @@ export class Sim {
   trails = false;
   field = false;
   effects: Effect[] = [];
-  history: (() => void)[] = [];
+  /** 되돌리기 목록: 실제로 무언가를 되돌렸으면 true (이미 지워진 것이면 false → 건너뜀) */
+  history: (() => boolean)[] = [];
   drops: MBody[] = [];
   onImpact?: (pitch: number, strength: number) => void;
   onGoal?: (b: MBody, goal: string) => void;
   onTick?: () => void;
   steps = 0;
+  /** 흘러간 시뮬레이션 시간 (ms) — 느린 재생에서도 실제 물리 시간 */
+  time = 0;
   private acc = 0;
 
   constructor(W: number, H: number) {
@@ -157,6 +160,7 @@ export class Sim {
     this.applyForces();
     Engine.update(this.engine, STEP);
     this.steps++;
+    this.time += STEP * this.engine.timing.timeScale;
     this.post();
     this.onTick?.();
   }
@@ -171,6 +175,7 @@ export class Sim {
   }
 
   private applyForces() {
+    const ts = this.engine.timing.timeScale;
     const bodies = Composite.allBodies(this.world);
     const charges: MBody[] = [];
     const magnets: MBody[] = [];
@@ -204,7 +209,7 @@ export class Sim {
             b.force.x -= rho * sub * gx;
             b.force.y -= rho * sub * gy;
             const frac = Math.min(1, sub / b.area);
-            damp(b, (d?.kind === 'drop' ? 0.01 : 0.04) * frac * (z.drag ?? 1));
+            damp(b, (d?.kind === 'drop' ? 0.01 : 0.04) * frac * (z.drag ?? 1), ts);
           }
         } else if (z.kind === 'wind') {
           if (inZone(z, b.position)) {
@@ -221,13 +226,13 @@ export class Sim {
           }
         } else if (z.kind === 'drag') {
           if (inZone(z, b.position)) {
-            if (z.drag) damp(b, z.drag);
+            if (z.drag) damp(b, z.drag, ts);
             if (z.decel) {
               const v = Body.getVelocity(b);
               const sp = Math.hypot(v.x, v.y);
-              const k = sp > 0 ? Math.max(0, sp - z.decel) / sp : 0;
+              const k = sp > 0 ? Math.max(0, sp - z.decel * ts) / sp : 0;
               Body.setVelocity(b, { x: v.x * k, y: v.y * k });
-              Body.setAngularVelocity(b, Body.getAngularVelocity(b) * 0.96);
+              Body.setAngularVelocity(b, Body.getAngularVelocity(b) * 0.96 ** ts);
             }
           }
         }
@@ -288,18 +293,20 @@ export class Sim {
         const r2 = rx * rx + ry * ry;
         const r = Math.sqrt(r2) || 1;
         const a = k / Math.max(r2, rs * rs);
-        b.force.x += (b.mass * a * rx) / r;
-        b.force.y += (b.mass * a * ry) / r;
+        const fx = (b.mass * a * rx) / r, fy = (b.mass * a * ry) / r;
+        b.force.x += fx;
+        b.force.y += fy;
+        // 별이 고정되어 있지 않으면 같은 크기로 끌려와요 (작용·반작용)
+        if (!s.isStatic) { s.force.x -= fx; s.force.y -= fy; }
       }
     }
   }
 
   /** 어떤 위치에서 전기/자기 힘이 어느 쪽으로 향하는지 (화살표 그리기용) */
-  fieldAt(x: number, y: number): Vec {
+  fieldAt(x: number, y: number, sources: MBody[] = this.fieldSources()): Vec {
     let fx = 0, fy = 0;
-    for (const b of Composite.allBodies(this.world)) {
+    for (const b of sources) {
       const d = D(b);
-      if (!d) continue;
       if (d.charge) {
         const rx = x - b.position.x, ry = y - b.position.y;
         const r2 = rx * rx + ry * ry + 600;
@@ -320,8 +327,13 @@ export class Sim {
     return { x: fx, y: fy };
   }
 
+  /** 전기 구슬·자석만 골라 두기 (화살표 격자마다 전체 물체를 훑지 않도록) */
+  fieldSources(): MBody[] {
+    return Composite.allBodies(this.world).filter((b) => D(b)?.charge || D(b)?.magnet);
+  }
+
   hasFieldSources() {
-    return Composite.allBodies(this.world).some((b) => D(b)?.charge || D(b)?.magnet);
+    return this.fieldSources().length > 0;
   }
 
   private collisions(pairs: Matter.Pair[]) {
@@ -525,7 +537,7 @@ export class Sim {
     });
     (c as unknown as { plugin: { d: LinkData } }).plugin.d = { type, color: o.color };
     Composite.add(this.world, c);
-    if (o.user) this.history.push(() => Composite.remove(this.world, c));
+    if (o.user) this.history.push(() => this.removeLink(c));
     return c;
   }
 
@@ -539,10 +551,20 @@ export class Sim {
   }
 
   removeZone(z: Zone) {
+    const had = this.zones.includes(z);
     this.zones = this.zones.filter((q) => q !== z);
+    return had;
   }
 
+  removeLink(c: MConstraint) {
+    const had = Composite.allConstraints(this.world).includes(c);
+    if (had) Composite.remove(this.world, c);
+    return had;
+  }
+
+  /** 세상에서 물체를 빼요. 원래 있었으면 true */
   remove(b: MBody) {
+    if (!this.world.bodies.includes(b)) return false;
     Composite.remove(this.world, b);
     for (const c of Composite.allConstraints(this.world)) {
       if (c.bodyA === b || c.bodyB === b) Composite.remove(this.world, c);
@@ -551,10 +573,13 @@ export class Sim {
       const i = this.drops.indexOf(b);
       if (i >= 0) this.drops.splice(i, 1);
     }
+    return true;
   }
 
+  /** 이미 지우개로 지운 것은 건너뛰고, 실제로 남아 있는 가장 최근 것을 되돌려요 */
   undo() {
-    this.history.pop()?.();
+    while (this.history.length) if (this.history.pop()!()) return true;
+    return false;
   }
 
   setAir(a: number) {
@@ -636,10 +661,12 @@ export function inZone(z: Zone, p: Vec) {
   return p.x >= z.x && p.x <= z.x + z.w && p.y >= z.y && p.y <= z.y + z.h;
 }
 
-function damp(b: MBody, k: number) {
+/** 속도를 비율로 줄여요. ts(시간 배율)만큼 나눠 적용해서 느린 재생에서도 같은 물리가 되게 */
+function damp(b: MBody, k: number, ts = 1) {
+  const f = (1 - Math.min(k, 1)) ** ts;
   const v = Body.getVelocity(b);
-  Body.setVelocity(b, { x: v.x * (1 - k), y: v.y * (1 - k) });
-  Body.setAngularVelocity(b, Body.getAngularVelocity(b) * (1 - k));
+  Body.setVelocity(b, { x: v.x * f, y: v.y * f });
+  Body.setAngularVelocity(b, Body.getAngularVelocity(b) * f);
 }
 
 export function magnetPoles(m: MBody) {

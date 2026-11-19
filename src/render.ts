@@ -257,12 +257,13 @@ function drawWater(ctx: CanvasRenderingContext2D, z: Zone, t: number) {
 }
 
 function drawField(ctx: CanvasRenderingContext2D, sim: Sim) {
-  if (!sim.hasFieldSources()) return;
+  const sources = sim.fieldSources();
+  if (!sources.length) return;
   const step = 52;
   ctx.lineCap = 'round';
   for (let x = step / 2; x < sim.W; x += step) {
     for (let y = step / 2; y < sim.H; y += step) {
-      const f = sim.fieldAt(x, y);
+      const f = sim.fieldAt(x, y, sources);
       const m = Math.hypot(f.x, f.y);
       if (m < 1e-7) continue;
       const k = Math.min(1, Math.log10(1 + m * 2e5) / 2.2);

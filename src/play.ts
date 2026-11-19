@@ -245,7 +245,8 @@ export function mountPlay(root: HTMLElement, scene: Scene) {
   }
 
   // ───────────────────── 이벤트 ─────────────────────
-  root.addEventListener('click', (e) => {
+  // root(#app)는 화면을 바꿔도 남아 있으니, 나갈 때 꼭 떼어 내야 해요
+  const onClick = (e: MouseEvent) => {
     const el = (e.target as HTMLElement).closest('button');
     if (!el || !root.contains(el)) return;
     unlock();
@@ -275,7 +276,8 @@ export function mountPlay(root: HTMLElement, scene: Scene) {
       case 'close-settings': settings.hidden = true; break;
     }
     syncSettings();
-  });
+  };
+  root.addEventListener('click', onClick);
 
   const hintToggle = $<HTMLButtonElement>('.hint-toggle');
   const hint = $<HTMLDivElement>('.hint');
@@ -376,6 +378,7 @@ export function mountPlay(root: HTMLElement, scene: Scene) {
   return () => {
     cancelAnimationFrame(raf);
     ro.disconnect();
+    root.removeEventListener('click', onClick);
     window.removeEventListener('keydown', onKey);
     document.removeEventListener('visibilitychange', onVis);
     clearTimeout(toastTimer);

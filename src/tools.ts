@@ -284,7 +284,7 @@ export class ToolController {
       const presets: Record<string, { g: Vec; label: string; color: string }> = {
         moon: { g: { x: 0, y: 0.17 }, label: '달', color: 'rgba(200,200,230,0.25)' },
         zero: { g: { x: 0, y: 0 }, label: '무중력', color: 'rgba(120,120,255,0.14)' },
-        up: { g: { x: 0, y: -0.7 }, label: '거꾸로', color: 'rgba(255,140,200,0.18)' },
+        up: { g: { x: 0, y: -1 }, label: '거꾸로', color: 'rgba(255,140,200,0.18)' },
         jupiter: { g: { x: 0, y: 2.5 }, label: '목성', color: 'rgba(255,170,90,0.2)' },
       };
       const pr = presets[v];
@@ -323,7 +323,8 @@ export class ToolController {
       ctx.beginPath(); ctx.moveTo(g.start.x, g.start.y); ctx.lineTo(g.cur.x, g.cur.y); ctx.stroke();
       ctx.setLineDash([]);
       ghost(ctx, this.state, g.start);
-      if (v.x || v.y) this.trajectory(ctx, g.start, v);
+      const phys = launchPhysics(this.state);
+      if ((v.x || v.y) && phys) this.trajectory(ctx, g.start, v, phys);
     } else if (g?.mode === 'cue') {
       const ball = this.cueBall?.();
       if (ball) {
@@ -402,13 +403,12 @@ export class ToolController {
     ctx.restore();
   }
 
-  private trajectory(ctx: CanvasRenderingContext2D, p0: Vec, v0: Vec) {
+  private trajectory(ctx: CanvasRenderingContext2D, p0: Vec, v0: Vec, phys: { air: number; lift: number }) {
     const sim = this.sim;
     const dt2 = (1000 / 60) ** 2 * G_SCALE;
     let x = p0.x, y = p0.y, vx = v0.x, vy = v0.y;
-    const air = 1 - MATERIALS[this.state.mat].air * sim.air;
-    const lift = this.state.tool !== 'magnet' && this.state.tool !== 'star' && this.state.tool !== 'plus' && this.state.tool !== 'minus'
-      ? (MATERIALS[this.state.mat].lift ?? 0) / MATERIALS[this.state.mat].density : 0;
+    const air = 1 - phys.air * sim.air;
+    const lift = phys.lift;
     ctx.fillStyle = 'rgba(60,60,90,0.55)';
     for (let i = 0; i < 90; i++) {
       const g = sim.gravityAt({ x, y });
@@ -421,6 +421,21 @@ export class ToolController {
       }
     }
     ctx.globalAlpha = 1;
+  }
+}
+
+/**
+ * 던질 물체가 실제로 만들어질 때의 공기 저항·뜨는 힘 (궤적 미리보기용).
+ * spawn() 과 같은 규칙이어야 해요. 고정된 채 놓이는 별은 날아가지 않으니 null.
+ */
+function launchPhysics(st: ToolState): { air: number; lift: number } | null {
+  const of = (m: MatId) => ({ air: MATERIALS[m].air, lift: (MATERIALS[m].lift ?? 0) / MATERIALS[m].density });
+  switch (st.tool) {
+    case 'star': return null;
+    case 'plus': case 'minus': return { air: 0.006, lift: 0 };
+    case 'magnet': return { air: MATERIALS.metal.air, lift: 0 };
+    case 'domino': return { air: MATERIALS.wood.air, lift: 0 };
+    default: return of(st.mat);
   }
 }
 

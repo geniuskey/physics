@@ -31,7 +31,8 @@
 ```bash
 npm install
 npm run dev      # http://127.0.0.1:5173
-npm run build    # 타입 검사 + dist/ 생성
+npm test         # 물리 회귀 테스트 (vitest)
+npm run build    # 타입 검사 + 테스트 + dist/ 생성
 ```
 
 - Vite + TypeScript, 강체 충돌은 [matter-js](https://brm.io/matter-js/)

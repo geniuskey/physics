@@ -53,7 +53,8 @@ export interface Scene {
 
 const FLOOR = 860;
 const clear = { color: 'rgba(0,0,0,0)', stroke: 'rgba(0,0,0,0)' };
-const secs = (steps: number) => ((steps * 1000) / 60 / 1000).toFixed(2);
+/** 시뮬레이션 시간(ms) → 초. 재생 속도와 상관없이 실제 물리 시간이에요 */
+const secs = (ms: number) => (ms / 1000).toFixed(2);
 
 /** 가만히 붙잡혀 있다가 놓아주는 물체들 */
 function release(bodies: MBody[]) {
@@ -103,7 +104,7 @@ export const SCENES: Scene[] = [
         actions: [
           {
             label: '떨어뜨리기!', icon: '⬇️', primary: true,
-            run: () => { if (!items.every((b) => b.isStatic)) setup(); release(items); start = sim.steps; },
+            run: () => { if (!items.every((b) => b.isStatic)) setup(); release(items); start = sim.time; },
           },
           { label: () => (sim.air > 0 ? '공기 없애기' : '공기 되살리기'), icon: '🌬️', run: () => sim.setAir(sim.air > 0 ? 0 : 1) },
         ],
@@ -112,7 +113,7 @@ export const SCENES: Scene[] = [
             if (b.isStatic || landed.has(b)) return;
             if (b.bounds.max.y >= FLOOR - 2) {
               landed.add(b);
-              results.push(`${defs[i].name} ${secs(sim.steps - start)}초`);
+              results.push(`${defs[i].name} ${secs(sim.time - start)}초`);
               sim.text(b.position.x, b.position.y - 70, `${landed.size}등!`, '#e85d04');
             }
           });
@@ -818,7 +819,23 @@ export const SCENES: Scene[] = [
       let cue: MBody | undefined;
       let potted = 0;
       let respawnAt = 0;
-      const placeCue = () => { cue = sim.ball(420, 450, R, 'stone', { ...opts, color: '#fdfdfd', stroke: '#ccc', face: true }); };
+      // 흰 공 자리에 다른 공이 있으면 겹치지 않는 곳을 찾아서 놓아요
+      const freeSpot = (): Vec => {
+        const others = sim.bodies().filter((b) => !b.isStatic && !b.isSensor);
+        for (const dx of [0, -70, -140, -210]) {
+          for (let k = 0; k < 15; k++) {
+            const dy = Math.ceil(k / 2) * (k % 2 ? 1 : -1) * (R * 2 + 8); // 0, +, −, ++, −− …
+            const p = { x: 420 + dx, y: 450 + dy };
+            if (p.y < 90 || p.y > sim.H - 90) continue;
+            if (others.every((b) => Math.hypot(b.position.x - p.x, b.position.y - p.y) > R * 2 + 4)) return p;
+          }
+        }
+        return { x: 420, y: 450 };
+      };
+      const placeCue = () => {
+        const p = freeSpot();
+        cue = sim.ball(p.x, p.y, R, 'stone', { ...opts, color: '#fdfdfd', stroke: '#ccc', face: true });
+      };
       const rack = () => {
         sim.bodies().forEach((b) => { if (!b.isStatic) sim.remove(b); });
         potted = 0;
