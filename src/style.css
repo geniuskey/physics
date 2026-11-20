@@ -153,6 +153,33 @@ kbd {
 }
 .foot .muted { margin: 0; font-size: 13px; color: var(--muted); }
 
+/* 측정 패널 */
+.probe {
+  position: absolute; top: 52px; right: 12px; width: min(340px, calc(100% - 24px)); z-index: 4;
+  background: rgba(255, 255, 255, 0.97); border: 1px solid var(--line); border-radius: 12px; box-shadow: var(--shadow-lg);
+  padding: 10px 12px 12px; max-height: calc(100% - 64px); overflow: auto; font-size: 13px;
+  backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+}
+.probe [hidden] { display: none; }
+.probe-head { display: flex; align-items: center; gap: 4px; }
+.probe-head b { font-size: 14px; }
+.probe-target { flex: 1; min-width: 0; margin-left: 6px; color: var(--muted); font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.probe-head .ib { min-width: 30px; height: 30px; }
+.probe-empty { margin: 10px 0 4px; color: var(--ink-2); line-height: 1.6; }
+.probe-empty small { color: var(--muted); font-size: 12px; }
+.probe-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin: 10px 0 0; }
+.probe-stats div { background: var(--surface-2); border: 1px solid var(--line); border-radius: 8px; padding: 6px 9px; min-width: 0; }
+.probe-stats dt { font-size: 11.5px; font-weight: 600; color: var(--muted); }
+.probe-stats dd { margin: 1px 0 0; font-weight: 700; font-size: 15px; color: var(--ink); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.probe-stats dd small { display: block; font-weight: 500; font-size: 11px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; }
+.probe-tabs { display: flex; gap: 2px; margin: 10px 0 0; background: var(--surface-2); border: 1px solid var(--line); border-radius: 8px; padding: 3px; }
+.probe-legend { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; margin: 8px 2px 0; font-size: 12px; color: var(--ink-2); font-weight: 500; }
+.probe-legend span { display: inline-flex; align-items: center; gap: 5px; }
+.probe-legend i { width: 12px; height: 3px; border-radius: 2px; }
+.probe-legend em { margin-left: auto; font-style: normal; color: var(--muted); }
+.probe-graph { display: block; width: 100%; height: 160px; margin-top: 4px; touch-action: none; }
+.stage.probing .hud { right: 364px; max-width: calc(100% - 400px); }
+
 @media (max-width: 720px) {
   .topnav-links a:not(.btn) { display: none; }
   .hero { min-height: 0; align-items: flex-end; }
@@ -237,9 +264,9 @@ kbd {
 .tn { font-size: 11px; font-weight: 600; white-space: nowrap; letter-spacing: -0.01em; }
 
 .stage { position: relative; min-width: 0; min-height: 0; overflow: hidden; }
-.stage canvas { position: absolute; inset: 0; display: block; touch-action: none; cursor: crosshair; }
-.stage canvas[data-tool='hand'] { cursor: grab; }
-.stage canvas[data-tool='erase'] { cursor: cell; }
+.stage > canvas { position: absolute; inset: 0; display: block; touch-action: none; cursor: crosshair; }
+.stage > canvas[data-tool='hand'] { cursor: grab; }
+.stage > canvas[data-tool='erase'] { cursor: cell; }
 
 .hint {
   position: absolute; top: 12px; left: 12px; width: min(330px, calc(100% - 24px)); z-index: 2;
@@ -407,6 +434,13 @@ kbd {
   .subbar { padding: 0 8px; gap: 8px; }
   .toolinfo span, .matinfo { display: none; }
   .mat, .size { white-space: nowrap; flex-shrink: 0; padding: 4px 7px; }
+  .probe { top: 8px; left: 8px; right: 8px; width: auto; max-height: calc(100% - 70px); padding: 8px 10px 10px; }
+  .probe-stats { grid-template-columns: repeat(3, 1fr); gap: 4px; margin-top: 8px; }
+  .probe-stats div { padding: 4px 7px; }
+  .probe-stats dd { font-size: 13.5px; }
+  .probe-stats dd small { display: none; }
+  .probe-graph { height: 120px; }
+  .stage.probing .hint, .stage.probing .hud { display: none; }
   .notices { top: auto; bottom: 60px; }
   .toast, .paused-badge { font-size: 12.5px; }
 }

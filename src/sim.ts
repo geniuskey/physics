@@ -1,5 +1,6 @@
 import Matter from 'matter-js';
 import { MATERIALS, type MatId } from './materials';
+import { G_SCALE, K_ELECTRIC, K_LORENTZ } from './units';
 
 const { Engine, Bodies, Body, Composite, Constraint, Events, Query, Vector } = Matter;
 
@@ -7,11 +8,9 @@ export type MBody = Matter.Body;
 export type MConstraint = Matter.Constraint;
 export interface Vec { x: number; y: number }
 
-/** 지구 중력 1g 에 해당하는 가속도 (px/ms²) */
-export const G_SCALE = 0.001;
+export { G_SCALE };
 const STEP = 1000 / 60;
-const K_ELECTRIC = 30;
-const K_LORENTZ = 0.00026;
+// 아래 셋은 실제 식이 아니라 단순화한 모형이에요 (자석 극 모형, 쇠의 자화, 바람의 밀기)
 const K_MAGNET = 180;
 const K_IRON = 34;
 const K_WIND = 2.6e-7;
@@ -55,6 +54,7 @@ export interface Zone {
   x: number; y: number; w: number; h: number;
   density?: number;
   dir?: Vec;
+  /** wind: 바람 세기 · magnetic: 자기장 B (T, + 는 화면 밖으로 ⊙, − 는 화면 안으로 ⊗) */
   strength?: number;
   g?: Vec;
   drag?: number;
@@ -127,6 +127,8 @@ export class Sim {
   onImpact?: (pitch: number, strength: number) => void;
   onGoal?: (b: MBody, goal: string) => void;
   onTick?: () => void;
+  /** 위치에너지·높이를 재는 기준 바닥 (세상 y, px) */
+  ground: number;
   steps = 0;
   /** 흘러간 시뮬레이션 시간 (ms) — 느린 재생에서도 실제 물리 시간 */
   time = 0;
@@ -135,6 +137,7 @@ export class Sim {
   constructor(W: number, H: number) {
     this.W = W;
     this.H = H;
+    this.ground = H - 40;
     this.engine = Engine.create({ positionIterations: 10, velocityIterations: 8, constraintIterations: 4 });
     this.engine.gravity.scale = 0; // 중력은 직접 계산 (구역마다 다르게 하려고)
     this.world = this.engine.world;
@@ -218,11 +221,15 @@ export class Sim {
             b.force.y += z.dir!.y * f;
           }
         } else if (z.kind === 'magnetic') {
+          // F = q v × B (B 는 화면에 수직, + 는 화면 밖으로 ⊙).
+          // 자기력은 일을 하지 않아 속력은 그대로이고 방향만 각속도 ω = qB/m 로 돌아요.
+          // 힘으로 더하면 한 걸음 늦은 속도를 써서 원이 점점 커지니까, 속도를 정확히 회전시켜요
           if (d?.charge && inZone(z, b.position)) {
+            const dt = STEP * ts;
+            const w = (d.charge * (z.strength ?? 0) * K_LORENTZ * dt * dt) / b.mass;
             const v = Body.getVelocity(b);
-            const k = d.charge * (z.strength ?? 1) * K_LORENTZ;
-            b.force.x += k * v.y;
-            b.force.y -= k * v.x;
+            const c = Math.cos(w), s = Math.sin(w);
+            Body.setVelocity(b, { x: v.x * c + v.y * s, y: -v.x * s + v.y * c });
           }
         } else if (z.kind === 'drag') {
           if (inZone(z, b.position)) {
@@ -239,14 +246,16 @@ export class Sim {
       }
     }
 
-    // 전기: 같은 전기는 밀고, 다른 전기는 당긴다
+    // 전기: 쿨롱 법칙 F = k q₁q₂ / r². 구슬은 고르게 대전된 공이라 겉에서는 점전하와 같고,
+    // 두 구슬이 겹칠 만큼 가까워지면 닿은 거리(반지름 합)에서 멈춰요
     for (let i = 0; i < charges.length; i++) {
       for (let j = i + 1; j < charges.length; j++) {
         const a = charges[i], b = charges[j];
         const rx = b.position.x - a.position.x, ry = b.position.y - a.position.y;
-        const r2 = rx * rx + ry * ry;
-        const r = Math.sqrt(r2) || 1;
-        const f = (K_ELECTRIC * D(a).charge! * D(b).charge!) / (r2 + 600);
+        const touch = (D(a).radius ?? 0) + (D(b).radius ?? 0);
+        const r2 = Math.max(rx * rx + ry * ry, touch * touch);
+        const r = Math.sqrt(rx * rx + ry * ry) || 1;
+        const f = (K_ELECTRIC * D(a).charge! * D(b).charge!) / r2;
         const fx = (f * rx) / r, fy = (f * ry) / r;
         if (!a.isStatic) { a.force.x -= fx; a.force.y -= fy; }
         if (!b.isStatic) { b.force.x += fx; b.force.y += fy; }
@@ -283,7 +292,7 @@ export class Sim {
       }
     }
 
-    // 별: 주변 모든 것을 끌어당김
+    // 별: 만유인력 a = GM / r² (attract = GM, px³/ms² = m³/s²). 별 안쪽에서는 표면 값으로 묶어 둬요
     for (const s of stars) {
       const k = D(s).attract!;
       const rs = D(s).radius ?? 30;
@@ -309,8 +318,8 @@ export class Sim {
       const d = D(b);
       if (d.charge) {
         const rx = x - b.position.x, ry = y - b.position.y;
-        const r2 = rx * rx + ry * ry + 600;
-        const r = Math.sqrt(r2);
+        const rr = Math.max(rx * rx + ry * ry, 400);
+        const r2 = rr, r = Math.sqrt(rr);
         fx += (d.charge * rx) / (r2 * r);
         fy += (d.charge * ry) / (r2 * r);
       }
@@ -463,6 +472,7 @@ export class Sim {
   bounds(o: { ceiling?: boolean; floor?: number; color?: string; sides?: boolean } = {}) {
     const t = 200;
     const floor = o.floor ?? this.H - 40;
+    this.ground = floor;
     const c = { color: o.color ?? '#6b7282', stroke: '#4c5262' };
     this.wall(this.W / 2, floor + t / 2, this.W + 2 * t, t, { ...c, friction: 0.8 });
     if (o.sides !== false) {

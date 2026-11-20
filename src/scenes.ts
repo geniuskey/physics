@@ -1,5 +1,6 @@
 import type { MatId } from './materials';
 import type { Theme } from './render';
+import { B_DEMO, PLANET_G } from './units';
 import { D, Matter, type MBody, type Sim, type Vec } from './sim';
 import type { ToolId } from './tools';
 
@@ -92,9 +93,9 @@ export const SCENES: Scene[] = [
     build(sim) {
       sim.bounds();
       const defs = [
-        { name: '볼링공', x: 400, make: (x: number) => sim.ball(x, 150, 36, 'stone', { color: '#3c3c64', stroke: '#22223a', face: true, static: true, nopin: true }) },
-        { name: '사과', x: 800, make: (x: number) => sim.ball(x, 150, 26, 'wood', { color: '#e63946', stroke: '#9d0208', deco: 'apple', static: true, nopin: true }) },
-        { name: '깃털', x: 1200, make: (x: number) => sim.ball(x, 150, 26, 'feather', { ...clear, deco: 'feather', static: true, nopin: true }) },
+        { name: '볼링공', x: 400, make: (x: number) => sim.ball(x, 150, 36, 'stone', { label: '볼링공', color: '#3c3c64', stroke: '#22223a', face: true, static: true, nopin: true }) },
+        { name: '사과', x: 800, make: (x: number) => sim.ball(x, 150, 26, 'wood', { label: '사과', color: '#e63946', stroke: '#9d0208', deco: 'apple', static: true, nopin: true }) },
+        { name: '깃털', x: 1200, make: (x: number) => sim.ball(x, 150, 26, 'feather', { label: '깃털', ...clear, deco: 'feather', static: true, nopin: true }) },
       ];
       let items: MBody[] = [];
       let start = 0;
@@ -156,10 +157,10 @@ export const SCENES: Scene[] = [
     build(sim) {
       sim.bounds();
       const cols = [
-        { n: '달 ×0.17', g: 0.17, c: 'rgba(215,215,240,0.45)' },
-        { n: '화성 ×0.38', g: 0.38, c: 'rgba(255,160,120,0.22)' },
-        { n: '지구 ×1', g: 1, c: 'rgba(120,210,150,0.2)' },
-        { n: '목성 ×2.5', g: 2.5, c: 'rgba(255,190,110,0.28)' },
+        { n: '달 1.62 m/s²', g: PLANET_G.moon, c: 'rgba(215,215,240,0.45)' },
+        { n: '화성 3.71 m/s²', g: PLANET_G.mars, c: 'rgba(255,160,120,0.22)' },
+        { n: '지구 9.81 m/s²', g: 1, c: 'rgba(120,210,150,0.2)' },
+        { n: '목성 24.8 m/s²', g: PLANET_G.jupiter, c: 'rgba(255,190,110,0.28)' },
       ];
       const cw = sim.W / 4;
       cols.forEach((c, i) => {
@@ -184,7 +185,7 @@ export const SCENES: Scene[] = [
               ctx.fillRect(i * cw + 14, y, 24, 3);
               ctx.font = '600 14px Pretendard, system-ui';
               ctx.textAlign = 'left';
-              ctx.fillText(`${k}`, i * cw + 42, y + 5);
+              ctx.fillText(`${k} m`, i * cw + 42, y + 5);
             }
           }
         },
@@ -611,8 +612,8 @@ export const SCENES: Scene[] = [
     tips: ['구슬을 당겼다 놓아 자기장 속으로 쏘아보세요', '세게 쏠수록 크게 돌아요. 아주 세게 쏘면 빠져나가요', '+ 구슬을 오른쪽 자기장에 쏘면 어느 쪽으로 휠까요?'],
     why: '자기장은 그 속을 달리는 전기 구슬을 옆으로 밀어요. 계속 옆으로 밀리니까 빙글빙글 원을 그리게 돼요. 태양에서 날아온 전기 알갱이가 지구 자기장에 휘어 들어가 빛나는 게 오로라예요.',
     build(sim) {
-      sim.zone({ kind: 'magnetic', x: 160, y: 80, w: 640, h: 740, strength: 1.2, removable: false });
-      sim.zone({ kind: 'magnetic', x: 800, y: 80, w: 640, h: 740, strength: -1.2, removable: false });
+      sim.zone({ kind: 'magnetic', x: 160, y: 80, w: 640, h: 740, strength: B_DEMO, removable: false });
+      sim.zone({ kind: 'magnetic', x: 800, y: 80, w: 640, h: 740, strength: -B_DEMO, removable: false });
       const shoot = () => {
         const a = sim.charge(480, 600, 1, { air: 0 });
         Body.setVelocity(a, { x: 0, y: -7 });

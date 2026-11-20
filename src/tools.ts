@@ -1,4 +1,5 @@
 import { MATERIALS, type MatId } from './materials';
+import { B_DEMO, PLANET_G } from './units';
 import { D, G_SCALE, L, Matter, type MBody, type MConstraint, type Sim, type Vec } from './sim';
 
 const { Body, Composite, Constraint } = Matter;
@@ -277,15 +278,15 @@ export class ToolController {
     if (w < 30 || h < 30) return;
     if (t === 'water') sim.zone({ kind: 'water', x, y, w, h, density: 0.001, user: true });
     if (t === 'field') {
-      sim.zone({ kind: 'magnetic', x, y, w, h, strength: this.state.variant.field === 'in' ? -1.2 : 1.2, user: true });
+      sim.zone({ kind: 'magnetic', x, y, w, h, strength: this.state.variant.field === 'in' ? -B_DEMO : B_DEMO, user: true });
     }
     if (t === 'gzone') {
       const v = this.state.variant.gzone ?? 'moon';
       const presets: Record<string, { g: Vec; label: string; color: string }> = {
-        moon: { g: { x: 0, y: 0.17 }, label: '달', color: 'rgba(200,200,230,0.25)' },
+        moon: { g: { x: 0, y: PLANET_G.moon }, label: '달', color: 'rgba(200,200,230,0.25)' },
         zero: { g: { x: 0, y: 0 }, label: '무중력', color: 'rgba(120,120,255,0.14)' },
         up: { g: { x: 0, y: -1 }, label: '거꾸로', color: 'rgba(255,140,200,0.18)' },
-        jupiter: { g: { x: 0, y: 2.5 }, label: '목성', color: 'rgba(255,170,90,0.2)' },
+        jupiter: { g: { x: 0, y: PLANET_G.jupiter }, label: '목성', color: 'rgba(255,170,90,0.2)' },
       };
       const pr = presets[v];
       sim.zone({ kind: 'gravity', x, y, w, h, g: pr.g, label: pr.label, color: pr.color, user: true });

@@ -4,12 +4,14 @@ import { icon } from './icons';
 import { fitView, render, toWorld, type View } from './render';
 import { CATS, type Runtime, type Scene } from './scenes';
 import { D, Sim } from './sim';
+import { PLANET_G } from './units';
+import { Probe } from './probe';
 import { ALL_TOOLS, SIZES, TOOLS, ToolController, type ToolId, type ToolState } from './tools';
 
 const GRAVITY = [
   { id: 'earth', label: '지구', g: { x: 0, y: 1 } },
-  { id: 'moon', label: '달', g: { x: 0, y: 0.17 } },
-  { id: 'jupiter', label: '목성', g: { x: 0, y: 2.5 } },
+  { id: 'moon', label: '달', g: { x: 0, y: PLANET_G.moon } },
+  { id: 'jupiter', label: '목성', g: { x: 0, y: PLANET_G.jupiter } },
   { id: 'zero', label: '무중력', g: { x: 0, y: 0 } },
   { id: 'up', label: '거꾸로', g: { x: 0, y: -1 } },
 ];
@@ -50,6 +52,9 @@ export function mountPlay(root: HTMLElement, scene: Scene) {
           <button class="ib" data-act="reset" title="처음 상태로" aria-label="처음 상태로">${icon('reset')}</button>
         </div>
         <div class="btngroup">
+          <button class="ib" data-act="measure" title="측정: 속도·에너지·그래프 (M)" aria-label="측정">${icon('chart')}</button>
+        </div>
+        <div class="btngroup">
           <button class="ib" data-act="sound" title="소리 켜기/끄기" aria-label="소리">${icon('sound')}</button>
           <button class="ib" data-act="settings" title="환경 설정: 중력·공기·표시" aria-label="환경 설정">${icon('settings')}</button>
         </div>
@@ -83,7 +88,7 @@ export function mountPlay(root: HTMLElement, scene: Scene) {
             <button class="switch" data-toggle="field"><span>힘 화살표</span><i></i></button>
             <button class="switch" data-toggle="sound"><span>소리</span><i></i></button>
           </div>
-          <p class="set-note"><kbd>Space</kbd> 일시정지 · <kbd>Ctrl</kbd>+<kbd>Z</kbd> 되돌리기 · <kbd>1</kbd>–<kbd>9</kbd> 도구 선택</p>
+          <p class="set-note"><kbd>Space</kbd> 일시정지 · <kbd>Ctrl</kbd>+<kbd>Z</kbd> 되돌리기 · <kbd>M</kbd> 측정 · <kbd>1</kbd>–<kbd>9</kbd> 도구 선택</p>
         </aside>
       </div>
     </div>
@@ -114,6 +119,12 @@ export function mountPlay(root: HTMLElement, scene: Scene) {
   let camX = (scene.W ?? 1600) / 2;
   let canPan = false;
   let panTold = false;
+  const probe = new Probe(stage, () => sim, (m) => showToast(m));
+  probe.onChange = () => {
+    $<HTMLButtonElement>('[data-act="measure"]').classList.toggle('on', probe.open);
+    stage.classList.toggle('probing', probe.open);
+    placeGuide();
+  };
 
   // ───────────────────── 장면 만들기 ─────────────────────
   function build() {
@@ -126,7 +137,8 @@ export function mountPlay(root: HTMLElement, scene: Scene) {
     if (import.meta.env.DEV) (window as unknown as { __sim: Sim }).__sim = sim;
     sim.onImpact = impact;
     sim.onGoal = (b, g) => { ding(); rt.onGoal?.(b, g); };
-    sim.onTick = rt.tick;
+    sim.onTick = () => { rt.tick?.(); probe.sample(); };
+    probe.reset();
     ctrl = new ToolController(sim, state);
     ctrl.cueBall = rt.cue;
     ctrl.onAction = (k) => {
@@ -288,6 +300,7 @@ export function mountPlay(root: HTMLElement, scene: Scene) {
       case 'reset': build(); showToast('처음 상태로 되돌렸어요'); break;
       case 'sound': setMuted(!isMuted()); break;
       case 'settings': settings.hidden = !settings.hidden; break;
+      case 'measure': probe.toggle(); break;
       case 'close-settings': settings.hidden = true; break;
     }
     syncSettings();
@@ -332,6 +345,8 @@ export function mountPlay(root: HTMLElement, scene: Scene) {
     }
     if (activePointer !== null) return;
     const p = worldPos(e);
+    // 측정 패널이 열려 있으면 누른 물체를 측정 대상으로 골라요 (도구 동작은 그대로)
+    probe.pick(p);
     // 잡기 도구로 빈 곳을 끌면 화면을 옆으로 밀어요
     if (canPan && state.tool === 'hand' && !sim.bodyAt(p, 8)) { startPan(); return; }
     activePointer = e.pointerId;
@@ -380,6 +395,7 @@ export function mountPlay(root: HTMLElement, scene: Scene) {
     if (e.code === 'Space') { e.preventDefault(); togglePause(); return; }
     if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') { e.preventDefault(); sim.undo(); return; }
     if (e.key === 'Escape') { ctrl.cancel(); closeSettings(); return; }
+    if (e.key.toLowerCase() === 'm' && !e.ctrlKey && !e.metaKey) { probe.toggle(); return; }
     const n = Number(e.key);
     if (n >= 1 && n <= 9) {
       const btn = toolsEl.querySelectorAll<HTMLButtonElement>('[data-tool]')[n - 1];
@@ -448,6 +464,9 @@ export function mountPlay(root: HTMLElement, scene: Scene) {
       br: [sr.width - m - hw, sr.height - m - hh, hw, hh],
     };
     const act = actionsEl.getBoundingClientRect();
+    const probeEl = stage.querySelector<HTMLElement>('.probe');
+    const pb = probeEl && !probeEl.hidden ? probeEl.getBoundingClientRect() : null;
+    const pr = pb ? [pb.left - sr.left, pb.top - sr.top, pb.width, pb.height] : null;
     const overlap = (a: number[], b: number[]) =>
       Math.max(0, Math.min(a[0] + a[2], b[0] + b[2]) - Math.max(a[0], b[0])) *
       Math.max(0, Math.min(a[1] + a[3], b[1] + b[3]) - Math.max(a[1], b[1]));
@@ -466,6 +485,7 @@ export function mountPlay(root: HTMLElement, scene: Scene) {
       const r = rects[c];
       let score = boxes.reduce((a, bx) => a + overlap(r, bx), 0);
       if (act.width) score += overlap(r, [act.left - sr.left, act.top - sr.top, act.width, act.height]) * 2;
+      if (pr) score += overlap(r, pr) * 4;
       // 장면 밖(빈 하늘)에 있으면 더 좋아요
       score += overlap(r, [view.ox, view.oy, sim.W * view.scale, sim.H * view.scale]) * 0.02;
       if (score < bestScore - 1) { best = c; bestScore = score; }
@@ -489,12 +509,13 @@ export function mountPlay(root: HTMLElement, scene: Scene) {
       theme: scene.theme,
       back: rt.back,
       front: rt.front,
-      overlay: (c) => ctrl.overlay(c),
+      overlay: (c) => { probe.overlay(c); ctrl.overlay(c); },
       shake,
       skyAbove: Math.max(0, view.oy / view.scale),
     });
     shake *= 0.85;
     if (shake < 0.5) shake = 0;
+    if (probe.open && frame % 6 === 0) probe.render();
     if (frame++ % 10 === 0 && rt.hud) {
       const txt = rt.hud();
       if (hud.textContent !== txt) hud.textContent = txt;
