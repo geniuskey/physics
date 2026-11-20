@@ -50,7 +50,7 @@ export const TOOLS: Record<ToolId, ToolDef> = {
       { id: 'up', label: '거꾸로' }, { id: 'jupiter', label: '목성 (세게)' },
     ],
   },
-  blast: { id: 'blast', icon: '💥', name: '펑!', tip: '누른 곳에서 바람이 펑 터져요' },
+  blast: { id: 'blast', icon: '💥', name: '폭발', tip: '누른 곳에서 바람이 펑 터져요' },
   pin: { id: 'pin', icon: '📌', name: '고정핀', tip: '물체를 그 자리에 고정하거나 풀어요' },
   erase: { id: 'erase', icon: '🧽', name: '지우개', tip: '문질러서 지워요' },
 };
@@ -124,7 +124,7 @@ export class ToolController {
         const hit = sim.bodyAt(p, 8, (b) => !!D(b) && D(b).removable && D(b).kind !== 'drop' && D(b).kind !== 'wall');
         if (hit) {
           sim.setStatic(hit, !hit.isStatic);
-          sim.text(hit.position.x, hit.position.y - 30, hit.isStatic ? '고정!' : '풀림!', '#e63946');
+          sim.text(hit.position.x, hit.position.y - 30, hit.isStatic ? '고정' : '풀림', '#e63946');
         }
         return;
       }

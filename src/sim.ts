@@ -1,6 +1,6 @@
 import Matter from 'matter-js';
 import { MATERIALS, type MatId } from './materials';
-import { G_SCALE, K_ELECTRIC, K_LORENTZ } from './units';
+import { G_EARTH, G_SCALE, K_ELECTRIC, K_LORENTZ, velFromSI } from './units';
 
 const { Engine, Bodies, Body, Composite, Constraint, Events, Query, Vector } = Matter;
 
@@ -58,8 +58,11 @@ export interface Zone {
   strength?: number;
   g?: Vec;
   drag?: number;
-  /** 바닥 마찰처럼 매번 일정하게 속도를 줄임 (위에서 내려다보는 놀이용) */
-  decel?: number;
+  /**
+   * 위에서 내려다본 바닥의 운동 마찰계수 μ. 수직항력이 mg 라서
+   * 마찰력 μmg 가 속도 반대로 작용하고 감속도는 질량과 상관없이 μg 예요
+   */
+  mu?: number;
   label?: string;
   color?: string;
   removable: boolean;
@@ -234,10 +237,12 @@ export class Sim {
         } else if (z.kind === 'drag') {
           if (inZone(z, b.position)) {
             if (z.drag) damp(b, z.drag, ts);
-            if (z.decel) {
+            if (z.mu) {
+              // 한 걸음 동안 줄어드는 속력 Δv = μ g Δt (멈추면 그 자리에 서요: 정지 마찰)
+              const dv = velFromSI(z.mu * G_EARTH * (STEP * ts) / 1000);
               const v = Body.getVelocity(b);
               const sp = Math.hypot(v.x, v.y);
-              const k = sp > 0 ? Math.max(0, sp - z.decel * ts) / sp : 0;
+              const k = sp > dv ? (sp - dv) / sp : 0;
               Body.setVelocity(b, { x: v.x * k, y: v.y * k });
               Body.setAngularVelocity(b, Body.getAngularVelocity(b) * 0.96 ** ts);
             }

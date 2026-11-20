@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "물리 놀이터 — 던지고, 띄우고, 부딪혀 보는 초심자용 물리 샌드박스",
+  "description": "물리 실험실 — 예측하고 측정하며 이론과 비교하는 인터랙티브 물리 시뮬레이션",
   "scripts": {
     "dev": "vite --host 127.0.0.1",
     "build": "tsc --noEmit && vitest run && vite build",

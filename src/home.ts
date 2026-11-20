@@ -18,7 +18,7 @@ export function mountHome(root: HTMLElement) {
   root.innerHTML = `
   <div class="home">
     <header class="topnav">
-      <a class="brand" href="#/">${logo()}<span>물리 놀이터</span></a>
+      <a class="brand" href="#/">${logo()}<span>물리 실험실</span></a>
       <nav class="topnav-links">
         <a href="#experiments">실험 목록</a>
         <a class="btn sm primary" href="#/play/${free.id}">자유 실험 열기</a>
@@ -29,18 +29,18 @@ export function mountHome(root: HTMLElement) {
       <canvas class="hero-canvas" aria-hidden="true"></canvas>
       <div class="hero-inner">
         <div class="hero-text">
-          <p class="eyebrow">인터랙티브 물리 샌드박스</p>
-          <h1>손으로 만져 보며<br/>이해하는 물리</h1>
-          <p class="lead">중력, 마찰, 부력, 전기와 자석, 충돌. 공식을 몰라도 괜찮아요.
-            물체를 놓고, 던지고, 조건을 바꿔 보면 원리가 눈에 보입니다.</p>
+          <p class="eyebrow">중·고등 물리 인터랙티브 실험실</p>
+          <h1>예측하고, 측정하고,<br/>이론과 비교하는 물리</h1>
+          <p class="lead">낙하, 포물선, 마찰, 부력, 전기력, 자기장, 충돌.
+            조건을 바꿔 결과를 먼저 예측하고, 실제 단위(m, s, kg, J)로 측정한 값을 이론식과 비교해 보세요.</p>
           <div class="cta">
             <a class="btn primary" href="#/play/${first.id}">${icon('play', 18)}첫 실험 시작하기</a>
             <a class="btn" href="#experiments">실험 둘러보기 ${icon('down', 18)}</a>
           </div>
           <ol class="steps">
-            <li><b>고르기</b><span>궁금한 실험을 골라요</span></li>
-            <li><b>만지기</b><span>놓고 던지고 바꿔 봐요</span></li>
-            <li><b>알아보기</b><span>“왜 그럴까?”로 확인해요</span></li>
+            <li><b>예측</b><span>결과를 먼저 골라요</span></li>
+            <li><b>측정</b><span>속도·에너지를 그래프로</span></li>
+            <li><b>설명</b><span>식과 가정, 한계까지</span></li>
           </ol>
           <p class="tap-hint">배경을 클릭하면 물체가 떨어져요</p>
         </div>
@@ -65,8 +65,8 @@ export function mountHome(root: HTMLElement) {
 
     <footer class="foot">
       <div class="foot-inner">
-        <span class="brand">${logo()}<span>물리 놀이터</span></span>
-        <p class="muted">현실을 단순화한 교육용 시뮬레이션입니다. 수치는 근사값이지만 원리는 실제와 같아요.</p>
+        <span class="brand">${logo()}<span>물리 실험실</span></span>
+        <p class="muted">교육용 2D 시뮬레이션입니다. 중력·마찰·전기력·자기장 속 운동은 SI 단위 식으로 계산하고, 각 실험의 ‘자세히’에 가정과 한계를 적어 두었어요.</p>
       </div>
     </footer>
   </div>`;
@@ -111,7 +111,8 @@ function card(s: Scene) {
 }
 
 function logo() {
-  return `<svg class="logo" width="26" height="26" viewBox="0 0 64 64" aria-hidden="true"><rect width="64" height="64" rx="14" fill="currentColor"/><circle cx="32" cy="34" r="18" fill="#ff6b6b" stroke="#fff" stroke-width="3"/><circle cx="26" cy="31" r="4.2" fill="#fff"/><circle cx="38" cy="31" r="4.2" fill="#fff"/><circle cx="26.8" cy="31.8" r="2.2" fill="#222"/><circle cx="38.8" cy="31.8" r="2.2" fill="#222"/><path d="M26 40q6 5 12 0" stroke="#3a1f1f" stroke-width="2.6" fill="none" stroke-linecap="round"/></svg>`;
+  // 포물선 궤적과 공: 던진 물체의 운동
+  return `<svg class="logo" width="26" height="26" viewBox="0 0 64 64" aria-hidden="true"><rect width="64" height="64" rx="14" fill="currentColor"/><path d="M12 50Q28 2 50 40" stroke="#fff" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-dasharray="1 7"/><circle cx="50" cy="42" r="7" fill="#ff8a5b"/><path d="M10 52h44" stroke="#fff" stroke-opacity=".55" stroke-width="3" stroke-linecap="round"/></svg>`;
 }
 
 /** 카드 미리보기: 실제 장면을 한 번 만들어 그려요 */
@@ -145,7 +146,7 @@ function drawThumb(cv: HTMLCanvasElement) {
   render(ctx, sim, fitView(cv.width, cv.height, sim.W, sim.H, 1), { theme: scene.theme, back: rt.back, front: rt.front });
 }
 
-/** 첫 화면 배경: 얼굴 달린 공들이 통통 */
+/** 첫 화면 배경: 떨어지고 튀는 물체들 */
 function hero(canvas: HTMLCanvasElement) {
   const ctx = canvas.getContext('2d')!;
   const sim = new Sim(1600, 640);
@@ -161,7 +162,7 @@ function hero(canvas: HTMLCanvasElement) {
     const r = 16 + Math.random() * 22;
     const b = k % 3 === 2
       ? sim.box(x, y, r * 2, r * 2, m === 'balloon' ? 'wood' : m)
-      : sim.ball(x, y, r, m === 'balloon' ? 'rubber' : m, { face: true, color: colors[k % colors.length], stroke: 'rgba(0,0,0,0.25)' });
+      : sim.ball(x, y, r, m === 'balloon' ? 'rubber' : m, { color: colors[k % colors.length], stroke: 'rgba(0,0,0,0.25)' });
     Matter.Body.setVelocity(b, { x: vx, y: 0 });
   };
   for (let i = 0; i < 12; i++) spawn(100 + Math.random() * 1400, -100 - i * 80);

@@ -7,6 +7,7 @@ import { D, Sim } from './sim';
 import { PLANET_G } from './units';
 import { Probe } from './probe';
 import { Experiment } from './experiment';
+import { buildHash, clampToStep, type Shared } from './share';
 import { ALL_TOOLS, SIZES, TOOLS, ToolController, type ToolId, type ToolState } from './tools';
 
 const GRAVITY = [
@@ -32,7 +33,10 @@ const actIcon = (a: { icon: string; primary?: boolean }) => {
 
 const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]!);
 
-export function mountPlay(root: HTMLElement, scene: Scene) {
+const deepList = (title: string, items: string[], cls = '') =>
+  items.length ? `<h4>${esc(title)}</h4><ul class="${cls}">${items.map((t) => `<li>${esc(t)}</li>`).join('')}</ul>` : '';
+
+export function mountPlay(root: HTMLElement, scene: Scene, shared?: Shared) {
   const cat = CATS[scene.cat];
   root.innerHTML = `
   <div class="play" style="--c:${cat.color}">
@@ -54,6 +58,7 @@ export function mountPlay(root: HTMLElement, scene: Scene) {
         </div>
         <div class="btngroup">
           <button class="ib" data-act="measure" title="측정: 속도·에너지·그래프 (M)" aria-label="측정">${icon('chart')}</button>
+          <button class="ib" data-act="share" title="지금 실험 조건으로 링크 복사" aria-label="링크 복사">${icon('link')}</button>
         </div>
         <div class="btngroup">
           <button class="ib" data-act="sound" title="소리 켜기/끄기" aria-label="소리">${icon('sound')}</button>
@@ -69,7 +74,13 @@ export function mountPlay(root: HTMLElement, scene: Scene) {
           <button class="hint-toggle" aria-expanded="true">${icon('guide', 16)}<span>실험 가이드</span></button>
           <div class="hint-body">
             <ol>${scene.tips.map((t) => `<li>${esc(t)}</li>`).join('')}</ol>
-            <details><summary>${icon('bulb', 15)}왜 그럴까?</summary><p>${esc(scene.why)}</p></details>
+            <details class="why"><summary>${icon('bulb', 15)}왜 그럴까?</summary><p>${esc(scene.why)}</p>
+              <details class="deep"><summary>자세히: 식 · 가정 · 한계</summary>
+                ${deepList('핵심 식', scene.deep.law, 'law')}
+                ${deepList('이 시뮬레이션의 가정', scene.deep.assume)}
+                ${deepList('실제와 다른 점', scene.deep.limit)}
+              </details>
+            </details>
           </div>
         </div>
         <div class="hud" hidden></div>
@@ -123,7 +134,47 @@ export function mountPlay(root: HTMLElement, scene: Scene) {
   const probe = new Probe(stage, () => sim, (m) => showToast(m));
   const exp = new Experiment(stage);
   exp.onStart = () => { sim.paused = false; closeSettings(); syncSettings(); };
-  exp.onParam = () => { if (rt.hud) hud.textContent = rt.hud(); };
+  exp.onParam = () => { if (rt.hud) hud.textContent = rt.hud(); syncUrl(); };
+  /** 주소에 담긴(또는 바꾼) 실험 조건. 처음 상태로 되돌려도 이 조건은 그대로예요 */
+  const cond: Shared = { params: { ...(shared?.params ?? {}) }, g: shared?.g, air: shared?.air };
+  let defaults: Record<string, number> = {};
+
+  /** 지금 조건 중 기본값과 다른 것만 주소에 남겨요 */
+  function syncUrl() {
+    cond.params = {};
+    for (const p of rt.params ?? []) if (p.value !== defaults[p.id]) cond.params[p.id] = p.value;
+    const g0 = scene.gravity ?? { x: 0, y: 1 };
+    const g = GRAVITY.find((x) => x.g.x === sim.gravity.x && x.g.y === sim.gravity.y);
+    cond.g = g && (g.g.x !== g0.x || g.g.y !== g0.y) ? g.id : undefined;
+    cond.air = sim.air !== (scene.air ?? 1) ? sim.air : undefined;
+    const hash = buildHash(scene.id, cond);
+    if (location.hash !== hash) history.replaceState(null, '', hash);
+  }
+
+  /** 주소로 받은 조건을 새로 만든 장면에 적용해요 */
+  function applyCond() {
+    defaults = Object.fromEntries((rt.params ?? []).map((p) => [p.id, p.value]));
+    for (const p of rt.params ?? []) {
+      const v = cond.params[p.id];
+      if (v === undefined) continue;
+      p.value = clampToStep(v, p.min, p.max, p.step);
+      p.onChange?.(p.value);
+    }
+    const g = cond.g && GRAVITY.find((x) => x.id === cond.g);
+    if (g) sim.gravity = { ...g.g };
+    if (cond.air !== undefined && AIR.some((a) => a.v === cond.air)) sim.setAir(cond.air);
+  }
+
+  async function copyLink() {
+    syncUrl();
+    const url = location.href;
+    try {
+      await navigator.clipboard.writeText(url);
+      showToast('링크를 복사했어요. 같은 실험 조건으로 열려요');
+    } catch {
+      window.prompt('이 링크를 복사하세요', url);
+    }
+  }
   probe.onChange = () => {
     $<HTMLButtonElement>('[data-act="measure"]').classList.toggle('on', probe.open);
     stage.classList.toggle('probing', probe.open);
@@ -138,6 +189,7 @@ export function mountPlay(root: HTMLElement, scene: Scene) {
     sim.trails = !!scene.trails;
     sim.field = !!scene.field;
     rt = scene.build(sim) ?? {};
+    applyCond();
     if (import.meta.env.DEV) (window as unknown as { __sim: Sim }).__sim = sim;
     sim.onImpact = impact;
     sim.onGoal = (b, g) => { ding(); rt.onGoal?.(b, g); };
@@ -294,6 +346,7 @@ export function mountPlay(root: HTMLElement, scene: Scene) {
     const group = el.parentElement?.dataset.set;
     if (group === 'gravity') sim.gravity = { ...GRAVITY.find((g) => g.id === el.dataset.v)!.g };
     if (group === 'air') sim.setAir(Number(el.dataset.v));
+    if (group === 'gravity' || group === 'air') syncUrl();
     if (group === 'speed') sim.speed = Number(el.dataset.v);
     if (el.dataset.toggle === 'trails') sim.trails = !sim.trails;
     if (el.dataset.toggle === 'field') sim.field = !sim.field;
@@ -306,6 +359,7 @@ export function mountPlay(root: HTMLElement, scene: Scene) {
       case 'sound': setMuted(!isMuted()); break;
       case 'settings': settings.hidden = !settings.hidden; break;
       case 'measure': probe.toggle(); break;
+      case 'share': void copyLink(); break;
       case 'close-settings': settings.hidden = true; break;
     }
     syncSettings();
@@ -319,6 +373,8 @@ export function mountPlay(root: HTMLElement, scene: Scene) {
     if (open) placeGuide();
   };
   hintToggle.addEventListener('click', () => setHint(hint.classList.contains('closed')));
+  // "왜 그럴까?"·"자세히"를 펼치면 카드가 커지니 자리를 다시 골라요
+  hint.addEventListener('toggle', () => placeGuide(), true);
   // 낮은 가로 화면(휴대폰 가로)에서는 공간이 없어 접어 두고 시작해요
   if (window.innerHeight < 500) setHint(false);
 
@@ -339,7 +395,7 @@ export function mountPlay(root: HTMLElement, scene: Scene) {
     pts.set(e.pointerId, e.clientX);
     e.preventDefault();
     closeSettings();
-    // 처음 만지면 설명 카드는 살짝 접어서 놀이터를 넓게
+    // 처음 만지면 설명 카드는 살짝 접어서 실험 화면을 넓게
     if (!touched) { touched = true; setHint(false); }
     if (pan) { startPan(); return; }
     if (canPan && pts.size === 2) {
@@ -500,6 +556,14 @@ export function mountPlay(root: HTMLElement, scene: Scene) {
       if (score < bestScore - 1) { best = c; bestScore = score; }
     }
     stage.dataset.guide = best;
+    // 같은 세로줄에 실험 조건 카드가 있으면 그 카드에 닿기 전까지만 늘어나요
+    const r = rects[best];
+    let maxH = sr.height - 2 * m;
+    for (const pr of panels) {
+      if (pr[0] >= r[0] + r[2] || pr[0] + pr[2] <= r[0]) continue;
+      maxH = best[0] === 't' ? Math.min(maxH, pr[1] - 2 * m) : Math.min(maxH, sr.height - (pr[1] + pr[3]) - 2 * m);
+    }
+    hint.style.maxHeight = `${Math.max(160, maxH)}px`;
   }
 
   const ro = new ResizeObserver(() => resize());

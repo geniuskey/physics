@@ -366,6 +366,15 @@ kbd {
 .hint summary::after { content: '펼치기'; margin-left: auto; font-size: 12px; font-weight: 500; color: var(--muted); }
 .hint details[open] summary::after { content: '접기'; }
 .hint details p { margin: 8px 0 2px; color: var(--ink-2); }
+.hint:not(.closed) { overflow-y: auto; overscroll-behavior: contain; }
+.hint.closed { max-height: none !important; }
+.hint details.deep { margin-top: 10px; background: var(--surface); padding: 8px 10px; }
+.hint details.deep summary { font-size: 13px; color: var(--ink-2); }
+.hint .deep h4 { margin: 10px 0 4px; font-size: 12px; font-weight: 700; color: var(--muted); letter-spacing: 0.01em; }
+.hint .deep ul { margin: 0; padding-left: 16px; }
+.hint .deep li { margin: 3px 0; padding: 0; font-size: 13px; color: var(--ink-2); counter-increment: none; }
+.hint .deep li::before { content: none; }
+.hint .deep ul.law li { font-variant-numeric: tabular-nums; color: var(--ink); }
 
 .stage[data-guide='tr'] .hint { left: auto; right: 12px; }
 .stage[data-guide='bl'] .hint { top: auto; bottom: 12px; }
@@ -493,7 +502,8 @@ kbd {
   .tn { font-size: 10.5px; }
   .hint { top: 8px; left: 8px; font-size: 13.5px; }
   .hud { right: 8px; font-size: 12px; max-width: 70%; padding: 4px 9px; }
-  .stage.tall .hud { top: calc(var(--world-top, 0px) + 8px); }
+  /* 세로 화면: 장면 위 빈 하늘에 두어 장면 안 글씨를 가리지 않게 */
+  .stage.tall .hud { top: max(8px, calc(var(--world-top, 0px) - 86px)); }
   .actions { bottom: 10px; }
   .act { height: 34px; padding: 0 11px; font-size: 13px; }
   .subbar { padding: 0 8px; gap: 8px; }
@@ -509,7 +519,7 @@ kbd {
   .params { left: 8px; bottom: 58px; width: min(300px, calc(100% - 16px)); }
   .params.closed { width: auto; }
   .predict { top: 8px; }
-  .notices { top: auto; bottom: 60px; }
+  .notices { top: auto; bottom: 112px; }
   .toast, .paused-badge { font-size: 12.5px; }
 }
 @media (max-width: 420px) {

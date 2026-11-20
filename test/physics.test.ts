@@ -240,9 +240,23 @@ describe('부력', () => {
   });
 });
 
+describe('마찰', () => {
+  it('바닥 마찰 μ 에서 멈추는 거리 = v² / 2μg, 질량과 무관', () => {
+    for (const [mat, mu, v] of [['stone', 0.2, 4], ['metal', 0.2, 4], ['stone', 0.5, 6]] as const) {
+      const sim = lab({ gravity: false });
+      sim.zone({ kind: 'drag', x: 0, y: 0, w: 1600, h: 900, mu });
+      const b = sim.ball(100, 450, 20, mat, { air: 0 });
+      Body.setVelocity(b, { x: velFromSI(v), y: 0 });
+      for (let i = 0; i < 60 * 10; i++) sim.step();
+      expect(b.speed).toBe(0);
+      expect(rel(toM(b.position.x - 100), (v * v) / (2 * mu * G_EARTH))).toBeLessThan(0.02);
+    }
+  });
+});
+
 describe('예측 실험', () => {
   // 실험을 실제로 돌렸을 때 나와야 하는 보기 번호
-  const expected: Record<string, number> = { 'drop-race': 2, planets: 1, hoops: 1, swirl: 1 };
+  const expected: Record<string, number> = { 'drop-race': 2, planets: 1, hoops: 1, swirl: 1, 'slide-race': 0, curling: 2 };
   for (const scene of SCENES.filter((s) => s.id in expected)) {
     it(`${scene.id}: 실험 결과가 물리 법칙대로 나온다`, () => {
       const sim = new Sim(scene.W ?? 1600, scene.H ?? 900);

@@ -397,8 +397,8 @@ function drawBody(ctx: CanvasRenderingContext2D, b: MBody, t: number) {
       ctx.ellipse(x - r * 0.35, y - r * 0.4, r * 0.35, r * 0.22, -0.6, 0, Math.PI * 2);
       ctx.fill();
     }
-    if (!d.face && (d.mat === 'wood' || d.mat === 'stone' || d.mat === 'metal' || d.mat === 'ice')) {
-      // 굴러가는 게 보이도록 줄무늬 (얼굴 달린 공은 얼굴이 돌아가니 필요 없어요)
+    if (d.face || d.mat === 'wood' || d.mat === 'stone' || d.mat === 'metal' || d.mat === 'ice') {
+      // 굴러가는(회전하는) 게 보이도록 지름 줄무늬
       ctx.strokeStyle = 'rgba(0,0,0,0.15)';
       ctx.lineWidth = 3;
       ctx.beginPath();
@@ -503,7 +503,6 @@ function drawBody(ctx: CanvasRenderingContext2D, b: MBody, t: number) {
     ctx.fillText(d.emoji, 0, 2);
     ctx.restore();
   }
-  if (d.face) drawFace(ctx, b, t);
   if (b.isStatic && d.kind === 'shape' && !d.nopin) {
     ctx.fillStyle = '#e63946';
     ctx.beginPath(); ctx.arc(x, y, 6, 0, 7); ctx.fill();
@@ -524,46 +523,6 @@ function drawBody(ctx: CanvasRenderingContext2D, b: MBody, t: number) {
   }
 }
 
-function drawFace(ctx: CanvasRenderingContext2D, b: MBody, t: number) {
-  const d = D(b);
-  const r = d.radius ?? 20;
-  const v = b.velocity;
-  const sp = Math.hypot(v.x, v.y);
-  ctx.save();
-  ctx.translate(b.position.x, b.position.y);
-  ctx.rotate(b.angle);
-  const blink = ((t + b.id * 977) % 3800) < 140;
-  const ex = r * 0.34, ey = -r * 0.12, er = r * 0.2;
-  // 눈동자는 움직이는 쪽을 봐요
-  const look = Matter.Vector.rotate({ x: sp > 0.3 ? v.x / sp : 0, y: sp > 0.3 ? v.y / sp : 0.3 }, -b.angle);
-  for (const sx of [-1, 1]) {
-    ctx.fillStyle = '#fff';
-    ctx.beginPath();
-    if (blink) ctx.ellipse(sx * ex, ey, er, er * 0.18, 0, 0, 7);
-    else ctx.arc(sx * ex, ey, er, 0, 7);
-    ctx.fill();
-    if (!blink) {
-      ctx.fillStyle = '#222';
-      ctx.beginPath();
-      ctx.arc(sx * ex + look.x * er * 0.45, ey + look.y * er * 0.45, er * 0.52, 0, 7);
-      ctx.fill();
-    }
-  }
-  ctx.strokeStyle = '#3a1f1f';
-  ctx.fillStyle = '#3a1f1f';
-  ctx.lineWidth = Math.max(1.5, r * 0.07);
-  ctx.lineCap = 'round';
-  if (sp > 9) {
-    ctx.beginPath();
-    ctx.ellipse(0, r * 0.38, r * 0.14, r * 0.18, 0, 0, 7);
-    ctx.fill();
-  } else {
-    ctx.beginPath();
-    ctx.arc(0, r * 0.2, r * 0.26, 0.2 * Math.PI, 0.8 * Math.PI);
-    ctx.stroke();
-  }
-  ctx.restore();
-}
 
 function drawMagnet(ctx: CanvasRenderingContext2D, b: MBody) {
   const d = D(b);
