@@ -6,6 +6,7 @@ import { CATS, type Runtime, type Scene } from './scenes';
 import { D, Sim } from './sim';
 import { PLANET_G } from './units';
 import { Probe } from './probe';
+import { Experiment } from './experiment';
 import { ALL_TOOLS, SIZES, TOOLS, ToolController, type ToolId, type ToolState } from './tools';
 
 const GRAVITY = [
@@ -120,6 +121,9 @@ export function mountPlay(root: HTMLElement, scene: Scene) {
   let canPan = false;
   let panTold = false;
   const probe = new Probe(stage, () => sim, (m) => showToast(m));
+  const exp = new Experiment(stage);
+  exp.onStart = () => { sim.paused = false; closeSettings(); syncSettings(); };
+  exp.onParam = () => { if (rt.hud) hud.textContent = rt.hud(); };
   probe.onChange = () => {
     $<HTMLButtonElement>('[data-act="measure"]').classList.toggle('on', probe.open);
     stage.classList.toggle('probing', probe.open);
@@ -139,6 +143,7 @@ export function mountPlay(root: HTMLElement, scene: Scene) {
     sim.onGoal = (b, g) => { ding(); rt.onGoal?.(b, g); };
     sim.onTick = () => { rt.tick?.(); probe.sample(); };
     probe.reset();
+    exp.mount(sim, rt.params, rt.predict);
     ctrl = new ToolController(sim, state);
     ctrl.cueBall = rt.cue;
     ctrl.onAction = (k) => {
@@ -394,7 +399,7 @@ export function mountPlay(root: HTMLElement, scene: Scene) {
     if ((e.target as HTMLElement).closest('input, textarea')) return;
     if (e.code === 'Space') { e.preventDefault(); togglePause(); return; }
     if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') { e.preventDefault(); sim.undo(); return; }
-    if (e.key === 'Escape') { ctrl.cancel(); closeSettings(); return; }
+    if (e.key === 'Escape') { ctrl.cancel(); closeSettings(); exp.close(); return; }
     if (e.key.toLowerCase() === 'm' && !e.ctrlKey && !e.metaKey) { probe.toggle(); return; }
     const n = Number(e.key);
     if (n >= 1 && n <= 9) {
@@ -464,9 +469,13 @@ export function mountPlay(root: HTMLElement, scene: Scene) {
       br: [sr.width - m - hw, sr.height - m - hh, hw, hh],
     };
     const act = actionsEl.getBoundingClientRect();
-    const probeEl = stage.querySelector<HTMLElement>('.probe');
-    const pb = probeEl && !probeEl.hidden ? probeEl.getBoundingClientRect() : null;
-    const pr = pb ? [pb.left - sr.left, pb.top - sr.top, pb.width, pb.height] : null;
+    // 측정 패널·실험 조건 카드도 가리지 않게
+    const panels = ['.probe', '.params'].flatMap((sel) => {
+      const el = stage.querySelector<HTMLElement>(sel);
+      if (!el || el.hidden) return [];
+      const r = el.getBoundingClientRect();
+      return [[r.left - sr.left, r.top - sr.top, r.width, r.height]];
+    });
     const overlap = (a: number[], b: number[]) =>
       Math.max(0, Math.min(a[0] + a[2], b[0] + b[2]) - Math.max(a[0], b[0])) *
       Math.max(0, Math.min(a[1] + a[3], b[1] + b[3]) - Math.max(a[1], b[1]));
@@ -485,7 +494,7 @@ export function mountPlay(root: HTMLElement, scene: Scene) {
       const r = rects[c];
       let score = boxes.reduce((a, bx) => a + overlap(r, bx), 0);
       if (act.width) score += overlap(r, [act.left - sr.left, act.top - sr.top, act.width, act.height]) * 2;
-      if (pr) score += overlap(r, pr) * 4;
+      for (const pr of panels) score += overlap(r, pr) * 4;
       // 장면 밖(빈 하늘)에 있으면 더 좋아요
       score += overlap(r, [view.ox, view.oy, sim.W * view.scale, sim.H * view.scale]) * 0.02;
       if (score < bestScore - 1) { best = c; bestScore = score; }
@@ -516,6 +525,7 @@ export function mountPlay(root: HTMLElement, scene: Scene) {
     shake *= 0.85;
     if (shake < 0.5) shake = 0;
     if (probe.open && frame % 6 === 0) probe.render();
+    if (frame % 10 === 5) exp.poll();
     if (frame++ % 10 === 0 && rt.hud) {
       const txt = rt.hud();
       if (hud.textContent !== txt) hud.textContent = txt;

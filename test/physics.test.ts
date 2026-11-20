@@ -5,6 +5,7 @@
 import { describe, expect, it } from 'vitest';
 import { read, Recorder } from '../src/measure';
 import { MATERIALS } from '../src/materials';
+import { SCENES } from '../src/scenes';
 import { Matter, Sim } from '../src/sim';
 import { B_DEMO, G_EARTH, K_COULOMB, Q_UNIT, toM, toPx, velFromSI, velToSI } from '../src/units';
 
@@ -237,4 +238,25 @@ describe('부력', () => {
     const sunk = (wood.bounds.max.y - 400) / s;
     expect(rel(sunk, MATERIALS.wood.density / 0.001)).toBeLessThan(0.05);
   });
+});
+
+describe('예측 실험', () => {
+  // 실험을 실제로 돌렸을 때 나와야 하는 보기 번호
+  const expected: Record<string, number> = { 'drop-race': 2, planets: 1, hoops: 1, swirl: 1 };
+  for (const scene of SCENES.filter((s) => s.id in expected)) {
+    it(`${scene.id}: 실험 결과가 물리 법칙대로 나온다`, () => {
+      const sim = new Sim(scene.W ?? 1600, scene.H ?? 900);
+      sim.gravity = { ...(scene.gravity ?? { x: 0, y: 1 }) };
+      sim.setAir(scene.air ?? 1);
+      const rt = scene.build(sim) ?? {};
+      sim.onTick = rt.tick;
+      const p = rt.predict!;
+      expect(p.options[expected[scene.id]]).toBeDefined();
+      p.start();
+      let r: ReturnType<typeof p.result>;
+      for (let i = 0; i < 60 * 30 && !(r = p.result()); i++) sim.step();
+      expect(r, '30초 안에 결과가 나와야 해요').toBeDefined();
+      expect(r!.pick, r!.detail).toBe(expected[scene.id]);
+    });
+  }
 });

@@ -1,6 +1,6 @@
 import type { MatId } from './materials';
 import type { Theme } from './render';
-import { B_DEMO, PLANET_G } from './units';
+import { B_DEMO, G_EARTH, PLANET_G, PX_PER_M, Q_UNIT, toM, velFromSI } from './units';
 import { D, Matter, type MBody, type Sim, type Vec } from './sim';
 import type { ToolId } from './tools';
 
@@ -21,8 +21,35 @@ type Hook = (ctx: CanvasRenderingContext2D, sim: Sim, t: number) => void;
 
 export interface Action { label: string | (() => string); icon: string; run: () => void; primary?: boolean }
 
+/** 슬라이더로 바꾸는 실험 조건. 장면 코드는 실행할 때 value 를 읽어요 */
+export interface Param {
+  id: string;
+  label: string;
+  unit: string;
+  min: number;
+  max: number;
+  step: number;
+  value: number;
+  onChange?: (v: number) => void;
+}
+
+/**
+ * 예측 → 관찰 → 설명. 먼저 결과를 고르게 한 다음 실험을 돌리고,
+ * result() 가 정답 번호를 돌려주면(결과가 나오면) 예측과 비교해 보여줘요.
+ */
+export interface Predict {
+  question: string;
+  options: string[];
+  start: () => void;
+  /** 아직 결과가 안 나왔으면 undefined. 나오면 실제로 일어난 보기 번호와 잰 값 설명 */
+  result: () => { pick: number; detail: string } | undefined;
+  explain: string;
+}
+
 export interface Runtime {
   actions?: Action[];
+  params?: Param[];
+  predict?: Predict;
   hud?: () => string;
   back?: Hook;
   front?: Hook;
@@ -76,6 +103,19 @@ function label(ctx: CanvasRenderingContext2D, text: string, x: number, y: number
   ctx.fillText(text, x, y);
 }
 
+/** 왼쪽 눈금자: 바닥에서 1 m 마다 */
+function ruler(ctx: CanvasRenderingContext2D, x = 40) {
+  ctx.fillStyle = 'rgba(80,60,120,0.3)';
+  ctx.font = '600 15px Pretendard, system-ui, sans-serif';
+  ctx.textAlign = 'left';
+  ctx.textBaseline = 'middle';
+  for (let k = 1; FLOOR - k * PX_PER_M > 40; k++) {
+    const y = FLOOR - k * PX_PER_M;
+    ctx.fillRect(x, y - 1.5, 30, 3);
+    ctx.fillText(`${k} m`, x + 38, y);
+  }
+}
+
 export const SCENES: Scene[] = [
   // ───────────────────────────── 중력 ─────────────────────────────
   {
@@ -88,56 +128,74 @@ export const SCENES: Scene[] = [
     theme: 'sky',
     tools: ['hand', 'ball', 'box', 'erase'],
     tool: 'hand',
-    tips: ['“떨어뜨리기”를 눌러 경주를 시작해요', '공기를 없애고 다시 떨어뜨려 보세요', '깃털이 볼링공을 따라잡을 수 있을까요?'],
+    tips: ['“떨어뜨리기”를 눌러 경주를 시작해요', '공기를 없애고 다시 떨어뜨려 보세요. 이론값 √(2h/g) 와 비교해요', '“예측하고 실험하기”로 진공에서 누가 먼저 닿을지 맞혀보세요'],
     why: '모든 물체는 중력 때문에 똑같이 빨라지며 떨어져요. 깃털이 느린 건 공기가 붙잡기 때문이에요. 공기가 없는 달에서 실제로 해봤더니 망치와 깃털이 동시에 떨어졌대요!',
     build(sim) {
       sim.bounds();
+      const height: Param = {
+        id: 'h', label: '떨어뜨리는 높이', unit: 'm', min: 1, max: 7, step: 0.5, value: 6.5,
+        onChange: () => { if (items.every((b) => b.isStatic)) setup(); },
+      };
+      /** 물체 바닥이 땅에서 h 만큼 떠 있게 */
+      const yAt = (r: number) => FLOOR - height.value * PX_PER_M - r;
       const defs = [
-        { name: '볼링공', x: 400, make: (x: number) => sim.ball(x, 150, 36, 'stone', { label: '볼링공', color: '#3c3c64', stroke: '#22223a', face: true, static: true, nopin: true }) },
-        { name: '사과', x: 800, make: (x: number) => sim.ball(x, 150, 26, 'wood', { label: '사과', color: '#e63946', stroke: '#9d0208', deco: 'apple', static: true, nopin: true }) },
-        { name: '깃털', x: 1200, make: (x: number) => sim.ball(x, 150, 26, 'feather', { label: '깃털', ...clear, deco: 'feather', static: true, nopin: true }) },
+        { name: '볼링공', x: 400, make: (x: number) => sim.ball(x, yAt(36), 36, 'stone', { label: '볼링공', color: '#3c3c64', stroke: '#22223a', face: true, static: true, nopin: true }) },
+        { name: '사과', x: 800, make: (x: number) => sim.ball(x, yAt(26), 26, 'wood', { label: '사과', color: '#e63946', stroke: '#9d0208', deco: 'apple', static: true, nopin: true }) },
+        { name: '깃털', x: 1200, make: (x: number) => sim.ball(x, yAt(26), 26, 'feather', { label: '깃털', ...clear, deco: 'feather', static: true, nopin: true }) },
       ];
       let items: MBody[] = [];
       let start = 0;
       let results: string[] = [];
-      let landed = new Set<MBody>();
+      let landed = new Map<MBody, number>();
       const setup = () => {
         items.forEach((b) => sim.remove(b));
         items = defs.map((d) => d.make(d.x));
         results = [];
-        landed = new Set();
+        landed = new Map();
       };
+      const drop = () => { if (!items.every((b) => b.isStatic)) setup(); release(items); start = sim.time; };
       setup();
       return {
-        actions: [
-          {
-            label: '떨어뜨리기!', icon: '⬇️', primary: true,
-            run: () => { if (!items.every((b) => b.isStatic)) setup(); release(items); start = sim.time; },
+        params: [height],
+        predict: {
+          question: '공기를 모두 없앤 진공에서 볼링공과 깃털을 같은 높이에서 떨어뜨리면, 무엇이 먼저 땅에 닿을까요?',
+          options: ['볼링공', '깃털', '동시에 닿는다'],
+          start: () => { sim.setAir(0); setup(); drop(); },
+          result: () => {
+            const tb = landed.get(items[0]), tf = landed.get(items[2]);
+            if (tb === undefined || tf === undefined) return undefined;
+            const detail = `볼링공 ${secs(tb - start)}초 · 깃털 ${secs(tf - start)}초 (이론 √(2h/g) = ${Math.sqrt((2 * height.value) / G_EARTH).toFixed(2)}초)`;
+            return { pick: Math.abs(tb - tf) < 40 ? 2 : tb < tf ? 0 : 1, detail };
           },
+          explain: '중력 가속도 g 는 질량과 상관없이 모든 물체에 똑같아요(9.81 m/s²). 무거운 물체는 중력을 더 세게 받지만 그만큼 움직이기도 어려워서(F = ma) 가속도가 같아지거든요. 공기 중에서 깃털이 느린 건 공기 저항 때문이고, 1971년 아폴로 15호 우주인이 달에서 망치와 깃털을 떨어뜨려 동시에 닿는 걸 보여줬어요.',
+        },
+        actions: [
+          { label: '떨어뜨리기!', icon: '⬇️', primary: true, run: drop },
           { label: () => (sim.air > 0 ? '공기 없애기' : '공기 되살리기'), icon: '🌬️', run: () => sim.setAir(sim.air > 0 ? 0 : 1) },
         ],
         tick: () => {
           items.forEach((b, i) => {
             if (b.isStatic || landed.has(b)) return;
             if (b.bounds.max.y >= FLOOR - 2) {
-              landed.add(b);
+              landed.set(b, sim.time);
               results.push(`${defs[i].name} ${secs(sim.time - start)}초`);
               sim.text(b.position.x, b.position.y - 70, `${landed.size}등!`, '#e85d04');
             }
           });
         },
-        hud: () => `${sim.air > 0 ? '공기 있음' : '공기 없음 (진공)'}${results.length ? ' · ' + results.join(' · ') : ''}`,
+        hud: () => {
+          const air = sim.air > 0 ? '공기 있음' : `진공 · 이론 ${Math.sqrt((2 * height.value) / G_EARTH).toFixed(2)}초`;
+          return `${air}${results.length ? ' · ' + results.join(' · ') : ''}`;
+        },
         back: (ctx) => {
+          const y = FLOOR - height.value * PX_PER_M;
           ctx.strokeStyle = 'rgba(80,60,120,0.35)';
           ctx.setLineDash([12, 10]);
           ctx.lineWidth = 3;
-          ctx.beginPath(); ctx.moveTo(200, 150); ctx.lineTo(1400, 150); ctx.stroke();
+          ctx.beginPath(); ctx.moveTo(200, y); ctx.lineTo(1400, y); ctx.stroke();
           ctx.setLineDash([]);
-          label(ctx, '출발선', 130, 150);
-          for (let y = 250; y < FLOOR; y += 100) {
-            ctx.fillStyle = 'rgba(80,60,120,0.25)';
-            ctx.fillRect(40, y, 30, 3);
-          }
+          label(ctx, `출발 ${height.value} m`, 1490, y, 'rgba(40,30,70,0.7)', 22);
+          ruler(ctx);
         },
       };
     },
@@ -152,40 +210,100 @@ export const SCENES: Scene[] = [
     tools: ['hand', 'ball', 'box', 'blast', 'erase'],
     tool: 'ball',
     mat: 'rubber',
-    tips: ['“모두 점프”를 눌러보세요', '같은 힘으로 뛰어도 높이가 달라요', '공을 던져서 포물선을 비교해 보세요'],
+    air: 0,
+    tips: ['“모두 점프”를 눌러보세요. 점선은 이론 최고 높이 v²/2g 예요', '실험 조건에서 점프 속도를 바꿔 보세요. 두 배로 하면 높이는?', '“예측하고 실험하기”로 달과 지구의 높이 차이를 맞혀보세요'],
     why: '행성이 무겁고 클수록 끌어당기는 힘(중력)이 세요. 달의 중력은 지구의 6분의 1이라 훨씬 높이, 훨씬 천천히 떨어져요. 목성에서는 2.5배나 무거워져요!',
     build(sim) {
       sim.bounds();
       const cols = [
-        { n: '달 1.62 m/s²', g: PLANET_G.moon, c: 'rgba(215,215,240,0.45)' },
-        { n: '화성 3.71 m/s²', g: PLANET_G.mars, c: 'rgba(255,160,120,0.22)' },
-        { n: '지구 9.81 m/s²', g: 1, c: 'rgba(120,210,150,0.2)' },
-        { n: '목성 24.8 m/s²', g: PLANET_G.jupiter, c: 'rgba(255,190,110,0.28)' },
+        { n: '달 1.62 m/s²', short: '달', g: PLANET_G.moon, c: 'rgba(215,215,240,0.45)' },
+        { n: '화성 3.71 m/s²', short: '화성', g: PLANET_G.mars, c: 'rgba(255,160,120,0.22)' },
+        { n: '지구 9.81 m/s²', short: '지구', g: 1, c: 'rgba(120,210,150,0.2)' },
+        { n: '목성 24.8 m/s²', short: '목성', g: PLANET_G.jupiter, c: 'rgba(255,190,110,0.28)' },
       ];
       const cw = sim.W / 4;
       cols.forEach((c, i) => {
         sim.zone({ kind: 'gravity', x: i * cw, y: -3000, w: cw, h: sim.H + 3000, g: { x: 0, y: c.g }, label: c.n, color: c.c, removable: false });
         if (i) sim.wall(i * cw, (260 + FLOOR) / 2, 12, FLOOR - 260, { color: '#b4bac6', stroke: '#8a91a0' });
       });
+      const speed: Param = { id: 'v', label: '점프 속도', unit: 'm/s', min: 1, max: 6, step: 0.5, value: 4 };
       const colors = ['#c9c9e8', '#ff8a5b', '#4dabf7', '#ffb347'];
-      const add = () => cols.forEach((_, i) => sim.ball(i * cw + cw / 2, FLOOR - 40, 26, 'rubber', { face: true, color: colors[i], stroke: '#555' }));
+      const R = 26;
+      const add = () => cols.forEach((_, i) => sim.ball(i * cw + cw / 2, FLOOR - R, R, 'rubber', { face: true, color: colors[i], stroke: '#555' }));
       add();
+      /** 칸마다 첫 점프의 최고 높이 (m). 땅에 다시 닿으면 기록을 멈춰요 */
+      let peaks: (number | undefined)[] = [];
+      let done: boolean[] = [];
+      let jumped = false;
+      const colOf = (b: MBody) => Math.min(3, Math.max(0, Math.floor(b.position.x / cw)));
+      const heightOf = (b: MBody) => toM(FLOOR - b.bounds.max.y);
+      const jump = () => {
+        peaks = [undefined, undefined, undefined, undefined];
+        done = [false, false, false, false];
+        jumped = true;
+        const v = velFromSI(speed.value);
+        sim.bodies().forEach((b) => { if (!b.isStatic) Body.setVelocity(b, { x: Body.getVelocity(b).x, y: -v }); });
+      };
       return {
-        actions: [
-          {
-            label: '모두 점프!', icon: '🦘', primary: true,
-            run: () => sim.bodies().forEach((b) => { if (!b.isStatic) Body.setVelocity(b, { x: b.velocity.x, y: -15 }); }),
+        params: [speed],
+        predict: {
+          question: '같은 속도로 점프하면, 달에서는 지구보다 몇 배 높이 올라갈까요? (달의 중력은 지구의 약 1/6)',
+          options: ['약 2.5배 (√6)', '약 6배', '약 36배 (6²)'],
+          start: () => {
+            sim.bodies().forEach((b) => { if (!b.isStatic) sim.remove(b); });
+            add();
+            jump();
           },
+          result: () => {
+            if (!done[0] || !done[2] || !peaks[0] || !peaks[2]) return undefined;
+            const ratio = peaks[0] / peaks[2];
+            const opts = [Math.sqrt(6), 6, 36];
+            const pick = opts.reduce((best, o, i) => (Math.abs(Math.log(o / ratio)) < Math.abs(Math.log(opts[best] / ratio)) ? i : best), 0);
+            return { pick, detail: `달 ${peaks[0].toFixed(2)} m ÷ 지구 ${peaks[2].toFixed(2)} m = ${ratio.toFixed(1)}배` };
+          },
+          explain: '올라가는 동안 운동에너지가 위치에너지로 바뀌어요: ½mv² = mgh, 그래서 최고 높이 h = v²/2g. 높이는 g 에 반비례하니 중력이 1/6 이면 6배 높이 올라가요. 대신 올라갔다 내려오는 시간(2v/g)도 6배라서 달에서는 아주 느긋하게 떨어져요.',
+        },
+        actions: [
+          { label: '모두 점프!', icon: '🦘', primary: true, run: jump },
           { label: '공 하나씩 더', icon: '⚽', run: add },
         ],
+        tick: () => {
+          if (!jumped) return;
+          for (const b of sim.bodies()) {
+            if (b.isStatic || D(b)?.kind !== 'shape') continue;
+            const i = colOf(b);
+            if (done[i]) continue;
+            const h = heightOf(b);
+            peaks[i] = Math.max(peaks[i] ?? 0, h);
+            if (peaks[i]! > 0.2 && h < 0.02) done[i] = true;
+          }
+        },
+        hud: () => {
+          if (!jumped) return `점프 속도 ${speed.value} m/s · 최고 높이 이론값 h = v²/2g`;
+          return cols.map((c, i) => `${c.short} ${peaks[i] !== undefined ? peaks[i]!.toFixed(2) : '–'} m`).join(' · ');
+        },
         back: (ctx) => {
           for (let i = 0; i < 4; i++) {
-            for (let y = FLOOR - 100, k = 1; y > 80; y -= 100, k++) {
+            // 이론 최고 높이 v²/2g 를 점선으로
+            const h = (speed.value * speed.value) / (2 * G_EARTH * cols[i].g);
+            const y = FLOOR - h * PX_PER_M;
+            if (y > 40) {
+              ctx.strokeStyle = 'rgba(60,40,110,0.4)';
+              ctx.setLineDash([8, 6]);
+              ctx.lineWidth = 2;
+              ctx.beginPath(); ctx.moveTo(i * cw + 60, y); ctx.lineTo(i * cw + cw - 20, y); ctx.stroke();
+              ctx.setLineDash([]);
+              ctx.font = '600 14px Pretendard, system-ui';
+              ctx.textAlign = 'right';
+              ctx.fillStyle = 'rgba(60,40,110,0.6)';
+              ctx.fillText(`이론 ${h.toFixed(2)} m`, i * cw + cw - 20, y - 10);
+            }
+            for (let y2 = FLOOR - 100, k = 1; y2 > 80; y2 -= 100, k++) {
               ctx.fillStyle = 'rgba(60,40,110,0.25)';
-              ctx.fillRect(i * cw + 14, y, 24, 3);
+              ctx.fillRect(i * cw + 14, y2, 24, 3);
               ctx.font = '600 14px Pretendard, system-ui';
               ctx.textAlign = 'left';
-              ctx.fillText(`${k} m`, i * cw + 42, y + 5);
+              ctx.fillText(`${k} m`, i * cw + 42, y2 + 5);
             }
           }
         },
@@ -242,7 +360,7 @@ export const SCENES: Scene[] = [
     tools: ['ball', 'hand', 'box', 'plank', 'wall', 'erase'],
     tool: 'ball',
     mat: 'rubber',
-    tips: ['빈 곳을 누르고 뒤로 당겼다 놓으면 슛!', '점선이 공이 날아갈 길이에요', '설정에서 중력을 달로 바꾸고 쏴보세요'],
+    tips: ['실험 조건에서 각도와 속력을 정하고 “발사!”로 골대를 노려요', '점선은 공기 저항이 없을 때의 궤적이에요. 실제 공은 조금 짧게 떨어져요', '“예측하고 실험하기”로 가장 멀리 가는 각도를 맞혀보세요'],
     why: '던진 공은 앞으로 나아가는 동안 중력이 계속 아래로 끌어당겨요. 그래서 곧게 날아가지 않고 무지개 모양(포물선)으로 휘어져요.',
     build(sim) {
       sim.bounds();
@@ -254,7 +372,42 @@ export const SCENES: Scene[] = [
       const ball = (x: number, y: number) => sim.ball(x, y, 24, 'rubber', { color: '#f77f00', stroke: '#9c4a00', face: true });
       ball(180, FLOOR - 30); ball(240, FLOOR - 30); ball(300, FLOOR - 30);
       let score = 0;
+      const angle: Param = { id: 'deg', label: '던지는 각도', unit: '°', min: 10, max: 80, step: 1, value: 50 };
+      const speed: Param = { id: 'v', label: '던지는 속력', unit: 'm/s', min: 3, max: 15, step: 0.1, value: 11 };
+      const L0 = { x: 420, y: FLOOR - 140 };
+      const launch = (deg: number, v: number, color = '#f77f00', ghost = false, from = L0) => {
+        // 농구공 정도의 공기 저항: ½ρC_dA/m ≈ 0.02 /m → 10 m/s 에서 γ ≈ 0.2 /s (frictionAir = γ/60)
+        const b = sim.ball(from.x, from.y, 18, 'rubber', { color, stroke: '#7a3a00', face: true, air: 0.0035 });
+        if (ghost) b.collisionFilter.group = -7; // 동시에 던진 공끼리는 부딪히지 않게
+        const th = (deg * Math.PI) / 180;
+        Body.setVelocity(b, { x: velFromSI(v * Math.cos(th)), y: -velFromSI(v * Math.sin(th)) });
+        return b;
+      };
+      /** 예측 실험: 30°·45°·60° 를 같은 속력으로. 처음 땅에 닿은 곳(m)을 기록 */
+      const PRED_V = 8;
+      /** 예측 실험은 땅에서 던져요 (같은 높이로 돌아와야 R = v²sin2θ/g) */
+      const G0 = { x: 520, y: FLOOR - 19 };
+      let race: { b: MBody; deg: number; rose: boolean; x?: number }[] = [];
       return {
+        params: [angle, speed],
+        predict: {
+          question: `같은 속력(${PRED_V} m/s)으로 30°, 45°, 60° 로 동시에 던지면, 어느 공이 가장 멀리 날아갈까요?`,
+          options: ['30°', '45°', '60°', '셋 다 같다'],
+          start: () => {
+            race.forEach((r) => sim.remove(r.b));
+            race = ([30, 45, 60] as const).map((deg, i) => ({ b: launch(deg, PRED_V, ['#2a78d6', '#eb6834', '#1baf7a'][i], true, G0), deg, rose: false }));
+          },
+          result: () => {
+            if (!race.length || race.some((r) => r.x === undefined)) return undefined;
+            const best = race.reduce((a, r) => (r.x! > a.x! ? r : a));
+            const close = race.every((r) => Math.abs(r.x! - best.x!) < 0.05);
+            return {
+              pick: close ? 3 : [30, 45, 60].indexOf(best.deg),
+              detail: race.map((r) => `${r.deg}° ${r.x!.toFixed(2)} m`).join(' · ') + ` (진공 이론: 30°·60° ${((PRED_V ** 2 * Math.sin(Math.PI / 3)) / G_EARTH).toFixed(2)} m, 45° ${((PRED_V ** 2) / G_EARTH).toFixed(2)} m)`,
+            };
+          },
+          explain: '사거리 R = v²·sin2θ / g 예요. sin2θ 는 2θ = 90°, 즉 θ = 45° 일 때 가장 커요. 30° 와 60° 는 sin60° = sin120° 라서 진공에서는 똑같이 날아가요. 공기 저항이 있으면 오래 떠 있는 60° 공이 더 손해를 봐서 30° 보다 조금 짧아져요.',
+        },
         onGoal: (b) => {
           const d = D(b);
           if (!d || d.scored || b.velocity.y <= 0) return;
@@ -263,12 +416,46 @@ export const SCENES: Scene[] = [
           sim.confetti(1308, 470);
           sim.text(1308, 380, score % 5 === 0 ? `${score}골! 대단해요!` : '골인!', '#f77f00');
         },
-        hud: () => `골: ${score}`,
-        actions: [{ label: '공 더 주기', icon: '🏀', run: () => { ball(200, 500); ball(260, 500); } }],
+        tick: () => {
+          for (const r of race) {
+            if (r.x !== undefined) continue;
+            const h = toM(FLOOR - r.b.bounds.max.y);
+            if (h > 0.3) r.rose = true;
+            else if (r.rose && h < 0.02) r.x = toM(r.b.position.x - G0.x);
+          }
+        },
+        hud: () => {
+          const th = (angle.value * Math.PI) / 180, v = speed.value;
+          return `골: ${score} · 최고 높이 ${((v * Math.sin(th)) ** 2 / (2 * G_EARTH)).toFixed(2)} m · 발사대 높이까지 사거리 ${((v * v * Math.sin(2 * th)) / G_EARTH).toFixed(2)} m (진공 이론)`;
+        },
+        actions: [
+          { label: '발사!', icon: '🚀', primary: true, run: () => { launch(angle.value, speed.value); } },
+          { label: '공 더 주기', icon: '🏀', run: () => { ball(200, 500); ball(260, 500); } },
+        ],
         back: (ctx) => {
           ctx.strokeStyle = 'rgba(255,255,255,0.9)';
           ctx.lineWidth = 3;
           ctx.strokeRect(1392 - 7 - 40, 290, 40, 40);
+          // 발사대와 공기 저항이 없을 때의 궤적(점선)
+          const th = (angle.value * Math.PI) / 180, v = speed.value;
+          ctx.fillStyle = '#6b7282';
+          ctx.fillRect(L0.x - 30, L0.y + 18, 60, FLOOR - L0.y - 18);
+          ctx.strokeStyle = 'rgba(60,40,110,0.55)';
+          ctx.lineWidth = 3;
+          ctx.setLineDash([10, 8]);
+          ctx.beginPath();
+          for (let t = 0; t < 4; t += 0.02) {
+            const x = L0.x + v * Math.cos(th) * t * PX_PER_M;
+            const y = L0.y - (v * Math.sin(th) * t - 0.5 * G_EARTH * t * t) * PX_PER_M;
+            if (t === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+            if (y > FLOOR || x > sim.W) break;
+          }
+          ctx.stroke();
+          ctx.setLineDash([]);
+          ctx.strokeStyle = 'rgba(60,40,110,0.8)';
+          ctx.lineWidth = 5;
+          ctx.beginPath(); ctx.moveTo(L0.x, L0.y); ctx.lineTo(L0.x + Math.cos(th) * 70, L0.y - Math.sin(th) * 70); ctx.stroke();
+          label(ctx, `${angle.value}° · ${speed.value.toFixed(1)} m/s`, L0.x, L0.y - 110, 'rgba(40,30,70,0.75)', 20);
         },
         front: (ctx) => {
           // 그물
@@ -609,23 +796,87 @@ export const SCENES: Scene[] = [
     gravity: { x: 0, y: 0 },
     air: 0,
     trails: true,
-    tips: ['구슬을 당겼다 놓아 자기장 속으로 쏘아보세요', '세게 쏠수록 크게 돌아요. 아주 세게 쏘면 빠져나가요', '+ 구슬을 오른쪽 자기장에 쏘면 어느 쪽으로 휠까요?'],
+    tips: ['“구슬 쏘기”를 누르면 점선(r = mv/qB)을 따라 돌아요', '속력과 자기장 B 를 바꿔 원의 크기가 어떻게 변하는지 보세요', '“예측하고 실험하기”로 속력을 두 배로 할 때 반지름을 맞혀보세요'],
     why: '자기장은 그 속을 달리는 전기 구슬을 옆으로 밀어요. 계속 옆으로 밀리니까 빙글빙글 원을 그리게 돼요. 태양에서 날아온 전기 알갱이가 지구 자기장에 휘어 들어가 빛나는 게 오로라예요.',
     build(sim) {
-      sim.zone({ kind: 'magnetic', x: 160, y: 80, w: 640, h: 740, strength: B_DEMO, removable: false });
-      sim.zone({ kind: 'magnetic', x: 800, y: 80, w: 640, h: 740, strength: -B_DEMO, removable: false });
-      const shoot = () => {
-        const a = sim.charge(480, 600, 1, { air: 0 });
-        Body.setVelocity(a, { x: 0, y: -7 });
-        const b = sim.charge(1120, 600, -1, { air: 0 });
-        Body.setVelocity(b, { x: 0, y: -7 });
+      const zl = sim.zone({ kind: 'magnetic', x: 160, y: 80, w: 640, h: 740, strength: B_DEMO, removable: false });
+      const zr = sim.zone({ kind: 'magnetic', x: 800, y: 80, w: 640, h: 740, strength: -B_DEMO, removable: false });
+      const field: Param = {
+        id: 'B', label: '자기장 B', unit: '×10⁴ T', min: 2, max: 12, step: 0.2, value: B_DEMO / 1e4,
+        onChange: (v) => { zl.strength = v * 1e4; zr.strength = -v * 1e4; },
       };
+      const speed: Param = { id: 'v', label: '쏘는 속력', unit: 'm/s', min: 1, max: 6, step: 0.1, value: 4.2 };
+      /** 전기 구슬 하나의 질량 (kg) — sim.charge 와 같은 크기·밀도 */
+      const m = Bodies.circle(0, 0, 18, { density: 0.0012 }).mass;
+      /** r = mv / qB (m) */
+      const radius = (v: number) => (m * v) / (Q_UNIT * field.value * 1e4);
+      const period = () => (2 * Math.PI * m) / (Q_UNIT * field.value * 1e4);
+      const SHOTS = [{ x: 480, y: 600, q: 1 }, { x: 1120, y: 600, q: -1 }];
+      const fire = (x: number, y: number, q: number, v: number) => {
+        const b = sim.charge(x, y, q, { air: 0 });
+        Body.setVelocity(b, { x: 0, y: -velFromSI(v) });
+        return b;
+      };
+      const shoot = () => SHOTS.forEach((p) => fire(p.x, p.y, p.q, speed.value));
       shoot();
+
+      // 예측 실험: 같은 자리에서 v, 2v 로 차례로 한 바퀴씩 (동시에 쏘면 구슬끼리 밀어내서 차례로)
+      const P0 = { x: 700, y: 560 }, V1 = 2;
+      let run: { phase: number; t0: number; b?: MBody; maxD: number; d: number[] } | undefined;
+      const launchPhase = () => {
+        run!.b = fire(P0.x, P0.y, 1, V1 * (run!.phase + 1));
+        run!.t0 = sim.time;
+        run!.maxD = 0;
+      };
       return {
+        params: [speed, field],
+        predict: {
+          question: '같은 자기장에서 전기 구슬을 두 배 빠르게 쏘면, 그리는 원의 반지름은 어떻게 될까요?',
+          options: ['그대로', '2배', '4배'],
+          start: () => {
+            sim.bodies().forEach((b) => { if (D(b)?.kind === 'charge') sim.remove(b); });
+            field.value = B_DEMO / 1e4;
+            field.onChange!(field.value);
+            run = { phase: 0, t0: 0, maxD: 0, d: [] };
+            launchPhase();
+          },
+          result: () => {
+            if (!run || run.d.length < 2) return undefined;
+            const [r1, r2] = run.d.map((d) => d / 2);
+            const ratio = r2 / r1;
+            const opts = [1, 2, 4];
+            const pick = opts.reduce((best, o, i) => (Math.abs(Math.log(o / ratio)) < Math.abs(Math.log(opts[best] / ratio)) ? i : best), 0);
+            return { pick, detail: `${V1} m/s → 반지름 ${r1.toFixed(2)} m · ${V1 * 2} m/s → ${r2.toFixed(2)} m · ${ratio.toFixed(2)}배 (이론 r = mv/qB = ${radius(V1).toFixed(2)} m, ${radius(V1 * 2).toFixed(2)} m)` };
+          },
+          explain: '자기력 qvB 가 원운동에 필요한 구심력 mv²/r 이 돼요. qvB = mv²/r 을 풀면 r = mv/qB, 그래서 속력이 두 배면 반지름도 두 배예요. 한 바퀴 도는 시간 T = 2πm/qB 에는 v 가 없어서 빠른 구슬도 같은 시간에 한 바퀴를 돌아요. 이 성질로 입자를 가속하는 장치가 사이클로트론이에요.',
+        },
         actions: [{ label: '구슬 쏘기', icon: '🚀', primary: true, run: shoot }],
+        tick: () => {
+          if (!run || !run.b || run.d.length >= 2) return;
+          const b = run.b;
+          run.maxD = Math.max(run.maxD, toM(Math.hypot(b.position.x - P0.x, b.position.y - P0.y)));
+          if (sim.time - run.t0 >= period() * 1000) {
+            run.d.push(run.maxD);
+            sim.remove(b);
+            run.phase++;
+            if (run.phase < 2) launchPhase();
+          }
+        },
+        hud: () => `B ${field.value.toFixed(1)}×10⁴ T · v ${speed.value.toFixed(1)} m/s → r = mv/qB = ${radius(speed.value).toFixed(2)} m · 한 바퀴 ${period().toFixed(2)} s`,
         back: (ctx) => {
           label(ctx, '⊙ 왼쪽으로 휘는 자기장', 480, 120, 'rgba(200,160,255,0.8)', 22);
           label(ctx, '⊗ 오른쪽으로 휘는 자기장', 1120, 120, 'rgba(255,190,110,0.8)', 22);
+          // 예상 궤도: 위로 쏜 구슬은 qB > 0 이면 왼쪽으로 돌아요 (두 구슬 모두 qB > 0)
+          const r = radius(speed.value) * PX_PER_M;
+          ctx.strokeStyle = 'rgba(255,255,255,0.35)';
+          ctx.lineWidth = 2;
+          ctx.setLineDash([8, 8]);
+          for (const p of SHOTS) { ctx.beginPath(); ctx.arc(p.x - r, p.y, r, 0, Math.PI * 2); ctx.stroke(); }
+          ctx.setLineDash([]);
+          for (const p of SHOTS) {
+            ctx.fillStyle = 'rgba(255,255,255,0.5)';
+            ctx.beginPath(); ctx.arc(p.x, p.y, 4, 0, Math.PI * 2); ctx.fill();
+          }
         },
       };
     },

@@ -180,6 +180,71 @@ kbd {
 .probe-graph { display: block; width: 100%; height: 160px; margin-top: 4px; touch-action: none; }
 .stage.probing .hud { right: 364px; max-width: calc(100% - 400px); }
 
+/* 실험 조건 (슬라이더) */
+.params {
+  position: absolute; left: 12px; bottom: 16px; width: 270px; z-index: 2;
+  background: rgba(255, 255, 255, 0.95); border: 1px solid var(--line); border-radius: var(--r); box-shadow: var(--shadow);
+  backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+}
+.params-toggle {
+  display: flex; align-items: center; gap: 7px; width: 100%; border: 0; background: transparent; padding: 9px 12px;
+  font-weight: 700; font-size: 13.5px; color: var(--ink); text-align: left;
+}
+.params-toggle .ico { color: var(--c); }
+.params-toggle span { flex: 1; }
+.params-toggle::after {
+  content: ''; width: 7px; height: 7px; border-right: 1.75px solid var(--muted); border-bottom: 1.75px solid var(--muted);
+  transform: rotate(-135deg) translate(-2px, -2px); transition: transform 0.15s;
+}
+.params.closed .params-toggle::after { transform: rotate(45deg) translate(-2px, -2px); }
+.params.closed { width: auto; }
+.params.closed .params-body { display: none; }
+.params-body { padding: 4px 12px 12px; border-top: 1px solid var(--line); }
+.param { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 2px 8px; margin-top: 10px; font-size: 13px; color: var(--ink-2); font-weight: 600; }
+.param output { font-variant-numeric: tabular-nums; color: var(--ink); font-weight: 700; }
+.param input { grid-column: 1 / -1; width: 100%; margin: 4px 0 0; accent-color: var(--c); height: 22px; }
+.predict-btn {
+  display: flex; align-items: center; justify-content: center; gap: 7px; width: 100%; margin-top: 12px; height: 36px;
+  border: 1px solid color-mix(in srgb, var(--c) 40%, var(--line)); border-radius: 8px;
+  background: color-mix(in srgb, var(--c) 8%, white); color: var(--c); font-weight: 700; font-size: 13.5px;
+}
+.predict-btn:hover { background: color-mix(in srgb, var(--c) 14%, white); }
+
+/* 예측 → 관찰 → 설명 */
+.predict {
+  position: absolute; left: 50%; top: 14px; transform: translateX(-50%); width: min(460px, calc(100% - 24px)); z-index: 6;
+  background: var(--surface); border: 1px solid var(--line); border-radius: 12px; box-shadow: var(--shadow-lg);
+  padding: 12px 16px 16px; font-size: 14px; line-height: 1.6; max-height: calc(100% - 28px); overflow: auto;
+}
+.predict.mini { width: min(380px, calc(100% - 24px)); padding: 10px 14px 12px; }
+.pr-head { display: flex; align-items: center; justify-content: space-between; }
+.pr-step { font-size: 12px; font-weight: 700; color: var(--c); letter-spacing: 0.02em; }
+.pr-head .ib { min-width: 30px; height: 30px; }
+.pr-q { margin: 6px 0 0; font-weight: 600; color: var(--ink); }
+.predict.mini .pr-q { display: none; }
+.pr-opts { display: grid; gap: 6px; margin-top: 12px; }
+.pr-opt {
+  border: 1px solid var(--line-2); background: var(--surface); border-radius: 8px; padding: 10px 12px; text-align: left;
+  font-weight: 600; font-size: 14px; color: var(--ink);
+}
+.pr-opt:hover { border-color: var(--c); background: color-mix(in srgb, var(--c) 6%, white); }
+.pr-note { margin: 10px 0 0; font-size: 12.5px; color: var(--muted); }
+.pr-mine { margin: 6px 0 0; color: var(--ink-2); }
+.pr-live::before { content: ''; display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: var(--c); margin-right: 7px; animation: pulse 1s infinite alternate; }
+@keyframes pulse { to { opacity: 0.25; } }
+.pr-verdict { margin: 8px 0 0; font-weight: 700; font-size: 15px; }
+.pr-verdict.ok { color: #13794f; }
+.pr-verdict.no { color: #b2401b; }
+.pr-cmp { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin: 10px 0 0; }
+.pr-cmp div { background: var(--surface-2); border: 1px solid var(--line); border-radius: 8px; padding: 6px 10px; }
+.pr-cmp dt { font-size: 11.5px; color: var(--muted); font-weight: 600; }
+.pr-cmp dd { margin: 0; font-weight: 700; }
+.pr-detail { margin: 10px 0 0; font-size: 13px; color: var(--ink-2); font-variant-numeric: tabular-nums; }
+.pr-explain { margin: 10px 0 0; padding: 10px 12px; background: var(--surface-2); border-radius: 8px; color: var(--ink-2); font-size: 13.5px; }
+.pr-actions { display: flex; justify-content: flex-end; gap: 6px; margin-top: 14px; }
+.btn.sm { height: 34px; padding: 0 14px; font-size: 13.5px; }
+@media (prefers-reduced-motion: reduce) { .pr-live::before { animation: none; } }
+
 @media (max-width: 720px) {
   .topnav-links a:not(.btn) { display: none; }
   .hero { min-height: 0; align-items: flex-end; }
@@ -441,6 +506,9 @@ kbd {
   .probe-stats dd small { display: none; }
   .probe-graph { height: 120px; }
   .stage.probing .hint, .stage.probing .hud { display: none; }
+  .params { left: 8px; bottom: 58px; width: min(300px, calc(100% - 16px)); }
+  .params.closed { width: auto; }
+  .predict { top: 8px; }
   .notices { top: auto; bottom: 60px; }
   .toast, .paused-badge { font-size: 12.5px; }
 }
