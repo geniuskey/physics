@@ -24,19 +24,19 @@ export interface ToolDef {
 export const TOOLS: Record<ToolId, ToolDef> = {
   hand: { id: 'hand', icon: '✋', name: '잡기', tip: '물체를 잡아서 끌거나 던져요' },
   cue: { id: 'cue', icon: '🎱', name: '큐', tip: '아무 데나 누르고 뒤로 당겼다 놓으면 흰 공을 쳐요' },
-  ball: { id: 'ball', icon: '⚽', name: '공', tip: '톡 누르면 놓이고, 당겼다 놓으면 날아가요', usesMat: true, usesSize: true },
-  box: { id: 'box', icon: '📦', name: '상자', tip: '톡 누르면 놓이고, 당겼다 놓으면 날아가요', usesMat: true, usesSize: true },
-  tri: { id: 'tri', icon: '🔺', name: '세모', tip: '뾰족한 세모를 놓아요', usesMat: true, usesSize: true },
-  plank: { id: 'plank', icon: '➖', name: '판자', tip: '길쭉한 판자를 놓아요', usesMat: true, usesSize: true },
+  ball: { id: 'ball', icon: '⚽', name: '공', tip: '누르면 놓이고, 끌었다 놓으면 그 방향으로 던져요', usesMat: true, usesSize: true },
+  box: { id: 'box', icon: '📦', name: '상자', tip: '누르면 놓이고, 끌었다 놓으면 그 방향으로 던져요', usesMat: true, usesSize: true },
+  tri: { id: 'tri', icon: '🔺', name: '세모', tip: '삼각형 물체를 놓아요', usesMat: true, usesSize: true },
+  plank: { id: 'plank', icon: '➖', name: '판자', tip: '긴 판을 놓아요', usesMat: true, usesSize: true },
   domino: { id: 'domino', icon: '🁢', name: '도미노', tip: '바닥 위에 도미노를 세워요', usesSize: true },
   drop: { id: 'drop', icon: '💧', name: '물방울', tip: '누르고 있으면 물이 쏟아져요' },
   plus: { id: 'plus', icon: '➕', name: '+ 전기', tip: '+ 전기 구슬: − 와는 당기고, + 와는 밀어내요', usesSize: false },
   minus: { id: 'minus', icon: '➖', name: '− 전기', tip: '− 전기 구슬: + 와는 당기고, − 와는 밀어내요' },
   magnet: { id: 'magnet', icon: '🧲', name: '자석', tip: 'N극과 S극이 있는 막대자석. 쇠를 끌어당겨요', usesSize: true },
-  star: { id: 'star', icon: '☀️', name: '끌개 별', tip: '주변의 모든 것을 끌어당기는 별', usesSize: true },
+  star: { id: 'star', icon: '☀️', name: '끌개 별', tip: '주변 물체를 GM/r² 로 끌어당기는 별', usesSize: true },
   wall: { id: 'wall', icon: '✏️', name: '벽 긋기', tip: '끌어서 움직이지 않는 벽을 그려요' },
   rope: { id: 'rope', icon: '🪢', name: '막대 줄', tip: '물체에서 다른 물체(또는 빈 곳)까지 끌어서 이어요' },
-  spring: { id: 'spring', icon: '🌀', name: '용수철', tip: '끌어서 통통 튕기는 용수철로 이어요' },
+  spring: { id: 'spring', icon: '🌀', name: '용수철', tip: '끌어서 두 점을 용수철로 이어요 (F = −kx)' },
   water: { id: 'water', icon: '🌊', name: '물웅덩이', tip: '끌어서 네모난 물웅덩이를 만들어요' },
   wind: { id: 'wind', icon: '🌬️', name: '바람', tip: '바람이 불 방향으로 끌어요' },
   field: {
@@ -50,7 +50,7 @@ export const TOOLS: Record<ToolId, ToolDef> = {
       { id: 'up', label: '거꾸로' }, { id: 'jupiter', label: '목성 (세게)' },
     ],
   },
-  blast: { id: 'blast', icon: '💥', name: '폭발', tip: '누른 곳에서 바람이 펑 터져요' },
+  blast: { id: 'blast', icon: '💥', name: '폭발', tip: '누른 곳을 중심으로 물체를 바깥으로 밀어내요' },
   pin: { id: 'pin', icon: '📌', name: '고정핀', tip: '물체를 그 자리에 고정하거나 풀어요' },
   erase: { id: 'erase', icon: '🧽', name: '지우개', tip: '문질러서 지워요' },
 };
@@ -184,7 +184,7 @@ export class ToolController {
       }
       case 'line': {
         if (Math.hypot(p.x - g.start.x, p.y - g.start.y) < 20) break;
-        sim.line(g.start.x, g.start.y, p.x, p.y, 16, { removable: true, user: true, color: '#8e7cc3', stroke: '#5e4b94' });
+        sim.line(g.start.x, g.start.y, p.x, p.y, 16, { removable: true, user: true, color: '#3b3a37', stroke: '#5a554b' });
         break;
       }
       case 'rect':
@@ -251,7 +251,7 @@ export class ToolController {
       case 'box': return sim.box(p.x, p.y, 52 * s, 52 * s, m, o);
       case 'tri': return sim.poly(p.x, p.y, 3, 34 * s, m, o);
       case 'plank': return sim.box(p.x, p.y, 170 * s, 18, m, o);
-      case 'domino': return sim.box(p.x, p.y, 16 * s, 80 * s, 'wood', { ...o, color: '#2b2d42', stroke: '#111', deco: 'domino', label: 'domino', friction: 0.3, frictionStatic: 0.1, density: 0.002 });
+      case 'domino': return sim.box(p.x, p.y, 16 * s, 80 * s, 'wood', { ...o, color: '#1c1d21', stroke: '#000', deco: 'domino', label: 'domino', friction: 0.3, frictionStatic: 0.1, density: 0.002 });
       case 'plus': return sim.charge(p.x, p.y, 1, { ...o, air: 0.006 });
       case 'minus': return sim.charge(p.x, p.y, -1, { ...o, air: 0.006 });
       case 'magnet': return sim.magnet(p.x, p.y, 0, { ...o, size: 100 * s });
@@ -318,9 +318,9 @@ export class ToolController {
     ctx.save();
     if (g?.mode === 'launch') {
       const v = this.launchVel(g.start, g.cur);
-      ctx.strokeStyle = 'rgba(60,60,90,0.5)';
-      ctx.lineWidth = 3;
-      ctx.setLineDash([8, 8]);
+      ctx.strokeStyle = 'rgba(236,228,212,0.4)';
+      ctx.lineWidth = 1.25;
+      ctx.setLineDash([5, 6]);
       ctx.beginPath(); ctx.moveTo(g.start.x, g.start.y); ctx.lineTo(g.cur.x, g.cur.y); ctx.stroke();
       ctx.setLineDash([]);
       ghost(ctx, this.state, g.start);
@@ -335,60 +335,60 @@ export class ToolController {
           const ux = dx / len, uy = dy / len;
           const pw = Math.min(len, 320);
           const bx = ball.position.x, by = ball.position.y;
-          ctx.strokeStyle = 'rgba(255,255,255,0.7)';
-          ctx.setLineDash([10, 10]);
-          ctx.lineWidth = 3;
+          ctx.strokeStyle = 'rgba(236,228,212,0.4)';
+          ctx.setLineDash([6, 8]);
+          ctx.lineWidth = 1.25;
           ctx.beginPath(); ctx.moveTo(bx, by); ctx.lineTo(bx + ux * 900, by + uy * 900); ctx.stroke();
           ctx.setLineDash([]);
           // 큐대
-          ctx.strokeStyle = '#d4a373';
-          ctx.lineWidth = 10;
+          ctx.strokeStyle = '#a88452';
+          ctx.lineWidth = 8;
           ctx.lineCap = 'round';
           const off = 30 + pw * 0.5;
           ctx.beginPath();
           ctx.moveTo(bx - ux * off, by - uy * off);
           ctx.lineTo(bx - ux * (off + 420), by - uy * (off + 420));
           ctx.stroke();
-          ctx.fillStyle = 'rgba(255,255,255,0.9)';
-          ctx.font = '700 24px Pretendard, system-ui';
+          ctx.fillStyle = '#e2c88f';
+          ctx.font = '500 20px "IBM Plex Mono", ui-monospace, monospace';
           ctx.textAlign = 'center';
           ctx.fillText(`힘 ${Math.round((pw / 320) * 100)}%`, bx, by - 40);
         }
       }
     } else if (g?.mode === 'line') {
-      ctx.strokeStyle = 'rgba(142,124,195,0.6)';
+      ctx.strokeStyle = 'rgba(200,169,106,0.4)';
       ctx.lineWidth = 16;
       ctx.lineCap = 'round';
       ctx.beginPath(); ctx.moveTo(g.start.x, g.start.y); ctx.lineTo(g.cur.x, g.cur.y); ctx.stroke();
     } else if (g?.mode === 'rect') {
       const t = this.state.tool;
-      const color = t === 'water' ? '80,170,255' : t === 'wind' ? '120,200,255' : t === 'field' ? '170,110,255' : '200,150,255';
+      const color = t === 'water' ? '110,170,200' : t === 'wind' ? '170,205,225' : t === 'field' ? '180,165,220' : '200,169,106';
       if (t === 'wind') {
-        ctx.strokeStyle = `rgba(${color},0.9)`;
-        ctx.lineWidth = 6;
+        ctx.strokeStyle = `rgba(${color},0.8)`;
+        ctx.lineWidth = 2;
         ctx.lineCap = 'round';
         arrow(ctx, g.start, g.cur);
       } else {
-        ctx.fillStyle = `rgba(${color},0.25)`;
-        ctx.strokeStyle = `rgba(${color},0.9)`;
-        ctx.lineWidth = 3;
-        ctx.setLineDash([10, 8]);
+        ctx.fillStyle = `rgba(${color},0.1)`;
+        ctx.strokeStyle = `rgba(${color},0.75)`;
+        ctx.lineWidth = 1.25;
+        ctx.setLineDash([6, 6]);
         ctx.beginPath();
         ctx.rect(g.start.x, g.start.y, g.cur.x - g.start.x, g.cur.y - g.start.y);
         ctx.fill(); ctx.stroke();
       }
     } else if (g?.mode === 'link') {
-      ctx.strokeStyle = this.state.tool === 'spring' ? '#2a9d8f' : '#7b5232';
-      ctx.lineWidth = 4;
+      ctx.strokeStyle = this.state.tool === 'spring' ? '#b8995a' : 'rgba(236,228,212,0.6)';
+      ctx.lineWidth = 1.5;
       ctx.setLineDash([6, 6]);
       ctx.beginPath(); ctx.moveTo(g.a.point.x, g.a.point.y); ctx.lineTo(g.cur.x, g.cur.y); ctx.stroke();
     } else if (g?.mode === 'pour' || (!g && this.state.tool === 'drop' && this.hover)) {
       const p = g?.mode === 'pour' ? g.cur : this.hover!;
       // 물이 나오는 노즐 표시
       ctx.setLineDash([]);
-      ctx.strokeStyle = 'rgba(30,110,200,0.7)';
-      ctx.fillStyle = 'rgba(61,139,253,0.15)';
-      ctx.lineWidth = 3;
+      ctx.strokeStyle = 'rgba(150,195,215,0.7)';
+      ctx.fillStyle = 'rgba(110,170,200,0.12)';
+      ctx.lineWidth = 1.25;
       ctx.beginPath(); ctx.arc(p.x, p.y - 34, 14, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
       ctx.lineCap = 'round';
       for (const dx of [-8, 0, 8]) {
@@ -396,8 +396,8 @@ export class ToolController {
       }
     }
     if ((this.state.tool === 'erase' || this.state.tool === 'blast') && this.hover) {
-      ctx.strokeStyle = this.state.tool === 'erase' ? 'rgba(90,90,90,0.5)' : 'rgba(251,133,0,0.5)';
-      ctx.lineWidth = 3;
+      ctx.strokeStyle = this.state.tool === 'erase' ? 'rgba(236,228,212,0.4)' : 'rgba(200,169,106,0.6)';
+      ctx.lineWidth = 1.25;
       ctx.setLineDash([5, 5]);
       ctx.beginPath(); ctx.arc(this.hover.x, this.hover.y, this.state.tool === 'erase' ? 16 : 60, 0, 7); ctx.stroke();
     }
@@ -410,7 +410,7 @@ export class ToolController {
     let x = p0.x, y = p0.y, vx = v0.x, vy = v0.y;
     const air = 1 - phys.air * sim.air;
     const lift = phys.lift;
-    ctx.fillStyle = 'rgba(60,60,90,0.55)';
+    ctx.fillStyle = 'rgba(226,200,143,0.7)';
     for (let i = 0; i < 90; i++) {
       const g = sim.gravityAt({ x, y });
       vx = vx * air + g.x * dt2 * (1 - lift);
@@ -418,7 +418,7 @@ export class ToolController {
       x += vx; y += vy;
       if (i % 3 === 0) {
         ctx.globalAlpha = 1 - i / 90;
-        ctx.beginPath(); ctx.arc(x, y, 4, 0, 7); ctx.fill();
+        ctx.beginPath(); ctx.arc(x, y, 2.2, 0, 7); ctx.fill();
       }
     }
     ctx.globalAlpha = 1;
@@ -443,8 +443,8 @@ function launchPhysics(st: ToolState): { air: number; lift: number } | null {
 function ghost(ctx: CanvasRenderingContext2D, st: ToolState, p: Vec) {
   const s = st.size;
   const m = MATERIALS[st.mat];
-  ctx.globalAlpha = 0.5;
-  ctx.fillStyle = st.tool === 'plus' ? '#ff5d5d' : st.tool === 'minus' ? '#4d8dff' : st.tool === 'star' ? '#ffc94d' : m.color;
+  ctx.globalAlpha = 0.4;
+  ctx.fillStyle = st.tool === 'plus' ? '#a8454b' : st.tool === 'minus' ? '#43649c' : st.tool === 'star' ? '#d6b46e' : m.color;
   ctx.beginPath();
   if (st.tool === 'box') ctx.rect(p.x - 26 * s, p.y - 26 * s, 52 * s, 52 * s);
   else if (st.tool === 'plank') ctx.rect(p.x - 85 * s, p.y - 9, 170 * s, 18);

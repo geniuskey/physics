@@ -2,7 +2,7 @@ import { boom, click, ding, impact, isMuted, setMuted, unlock } from './audio';
 import { MATERIALS, PICKABLE } from './materials';
 import { icon } from './icons';
 import { fitView, render, toWorld, type View } from './render';
-import { CATS, type Runtime, type Scene } from './scenes';
+import { CATS, labelBoxes, type Runtime, type Scene } from './scenes';
 import { D, Sim } from './sim';
 import { PLANET_G } from './units';
 import { Probe } from './probe';
@@ -245,7 +245,14 @@ export function mountPlay(root: HTMLElement, scene: Scene, shared?: Shared) {
       html += `<div class="matinfo">${esc(m.name)} — ${esc(m.blurb)}</div>`;
     }
     subbar.innerHTML = html;
+    subbarFade();
   }
+
+  /** 도구 옵션 줄이 화면보다 길면 오른쪽 끝을 흐리게 (더 넘길 수 있다는 표시) */
+  function subbarFade() {
+    subbar.classList.toggle('more-r', subbar.scrollLeft + subbar.clientWidth < subbar.scrollWidth - 4);
+  }
+  subbar.addEventListener('scroll', subbarFade, { passive: true });
 
   function selectTool(id: ToolId, announce = true) {
     ctrl?.cancel();
@@ -372,7 +379,9 @@ export function mountPlay(root: HTMLElement, scene: Scene, shared?: Shared) {
     hintToggle.setAttribute('aria-expanded', String(open));
     if (open) placeGuide();
   };
-  hintToggle.addEventListener('click', () => setHint(hint.classList.contains('closed')));
+  /** 사람이 직접 가이드를 열고 닫았으면 자동으로 접지 않아요 */
+  let hintByUser = false;
+  hintToggle.addEventListener('click', () => { hintByUser = true; setHint(hint.classList.contains('closed')); });
   // "왜 그럴까?"·"자세히"를 펼치면 카드가 커지니 자리를 다시 골라요
   hint.addEventListener('toggle', () => placeGuide(), true);
   // 낮은 가로 화면(휴대폰 가로)에서는 공간이 없어 접어 두고 시작해요
@@ -474,6 +483,7 @@ export function mountPlay(root: HTMLElement, scene: Scene, shared?: Shared) {
     canvas.style.height = `${r.height}px`;
     updateView(r.width, r.height, dpr);
     placeGuide();
+    subbarFade();
   }
 
   /**
@@ -513,9 +523,12 @@ export function mountPlay(root: HTMLElement, scene: Scene, shared?: Shared) {
   }
 
   type Corner = 'tl' | 'tr' | 'bl' | 'br';
-  /** 실험 가이드 카드가 물체를 가리지 않는 모서리를 골라요 */
-  function placeGuide() {
-    if (hint.classList.contains('closed')) return;
+  /**
+   * 실험 가이드 카드가 물체·이름표·패널을 가리지 않는 모서리를 골라요.
+   * 돌려주는 값은 고른 자리에서 가리는 넓이를 카드 넓이로 나눈 비율이에요 (0 = 아무것도 안 가림)
+   */
+  function placeGuide(): number {
+    if (hint.classList.contains('closed')) return 0;
     const sr = stage.getBoundingClientRect();
     const hw = hint.offsetWidth, hh = hint.offsetHeight, m = 12;
     const rects: Record<Corner, [number, number, number, number]> = {
@@ -544,11 +557,14 @@ export function mountPlay(root: HTMLElement, scene: Scene, shared?: Shared) {
       if (d.kind === 'wall' && (w > sim.W * 0.6 || h > sim.H * 0.6)) continue;
       boxes.push([b.bounds.min.x * view.scale + view.ox, b.bounds.min.y * view.scale + view.oy, w * view.scale, h * view.scale]);
     }
+    // 장면 이름표("나무 μs 0.40", "왼쪽으로 휘는 자기장" 등)는 글자라서 조금만 가려도 못 읽어요
+    const labels = labelBoxes.map(([x, y, w, h]) => [x * view.scale + view.ox, y * view.scale + view.oy, w * view.scale, h * view.scale]);
     const order: Corner[] = scene.guideAt ? [scene.guideAt] : ['tl', 'tr', 'bl', 'br'];
     let best: Corner = order[0], bestScore = Infinity;
     for (const c of order) {
       const r = rects[c];
       let score = boxes.reduce((a, bx) => a + overlap(r, bx), 0);
+      for (const lb of labels) score += overlap(r, lb) * 3;
       if (act.width) score += overlap(r, [act.left - sr.left, act.top - sr.top, act.width, act.height]) * 2;
       for (const pr of panels) score += overlap(r, pr) * 4;
       // 장면 밖(빈 하늘)에 있으면 더 좋아요
@@ -564,6 +580,9 @@ export function mountPlay(root: HTMLElement, scene: Scene, shared?: Shared) {
       maxH = best[0] === 't' ? Math.min(maxH, pr[1] - 2 * m) : Math.min(maxH, sr.height - (pr[1] + pr[3]) - 2 * m);
     }
     hint.style.maxHeight = `${Math.max(160, maxH)}px`;
+    // 빈 하늘 가산점(0.02)은 빼고, 실제로 가리는 것만 비율로
+    const sky = overlap(r, [view.ox, view.oy, sim.W * view.scale, sim.H * view.scale]) * 0.02;
+    return Math.max(0, bestScore - sky) / Math.max(1, hw * hh);
   }
 
   const ro = new ResizeObserver(() => resize());
@@ -578,6 +597,7 @@ export function mountPlay(root: HTMLElement, scene: Scene, shared?: Shared) {
     last = now;
     if (!sim.paused) ctrl.tick();
     sim.frame(dt);
+    labelBoxes.length = 0;
     render(ctx, sim, view, {
       theme: scene.theme,
       back: rt.back,
@@ -590,6 +610,9 @@ export function mountPlay(root: HTMLElement, scene: Scene, shared?: Shared) {
     if (shake < 0.5) shake = 0;
     if (probe.open && frame % 6 === 0) probe.render();
     if (frame % 10 === 5) exp.poll();
+    // 첫 화면이 그려진 뒤(이름표 자리를 안 뒤): 어느 모서리에 두어도 장면을 많이 가리면 접어서 시작해요
+    // 휴대폰처럼 좁은 화면은 카드가 장면 위쪽을 통째로 덮으니 늘 접어서 시작해요
+    if (frame === 2 && !hintByUser && !touched && (stage.clientWidth < 600 || placeGuide() > 0.06)) setHint(false);
     if (frame++ % 10 === 0 && rt.hud) {
       const txt = rt.hud();
       if (hud.textContent !== txt) hud.textContent = txt;

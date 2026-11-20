@@ -9,12 +9,12 @@ const { Body, Bodies } = Matter;
 export type Cat = 'gravity' | 'friction' | 'fluid' | 'em' | 'collision' | 'free';
 
 export const CATS: Record<Cat, { name: string; emoji: string; color: string }> = {
-  gravity: { name: '중력', emoji: '🌍', color: '#5b5bd6' },
-  friction: { name: '마찰', emoji: '🛷', color: '#d4691b' },
-  fluid: { name: '물과 바람', emoji: '💧', color: '#0d82c4' },
-  em: { name: '전기와 자석', emoji: '⚡', color: '#b7860b' },
-  collision: { name: '충돌', emoji: '💥', color: '#d33f5f' },
-  free: { name: '자유', emoji: '🧪', color: '#13946f' },
+  gravity: { name: '중력', emoji: '🌍', color: '#93a3d4' },
+  friction: { name: '마찰', emoji: '🛷', color: '#c99567' },
+  fluid: { name: '물과 바람', emoji: '💧', color: '#7fb3c4' },
+  em: { name: '전기와 자석', emoji: '⚡', color: '#cdb062' },
+  collision: { name: '충돌', emoji: '💥', color: '#c98a90' },
+  free: { name: '자유', emoji: '🧪', color: '#8fbca0' },
 };
 
 type Hook = (ctx: CanvasRenderingContext2D, sim: Sim, t: number) => void;
@@ -107,8 +107,21 @@ function release(bodies: MBody[]) {
   for (const b of bodies) if (b.isStatic) Body.setStatic(b, false);
 }
 
-function label(ctx: CanvasRenderingContext2D, text: string, x: number, y: number, color = 'rgba(40,30,70,0.7)', size = 24) {
-  ctx.font = `700 ${size}px Pretendard, system-ui, sans-serif`;
+/** 이번 프레임에 그린 장면 이름표 자리(세상 좌표 [x, y, w, h]). 실험 가이드 카드가 이걸 피해서 자리를 골라요 */
+export const labelBoxes: [number, number, number, number][] = [];
+
+/** plate: 무늬(자기장 기호 등) 위에 쓸 때 글자 뒤에 까는 판 색 */
+function label(ctx: CanvasRenderingContext2D, text: string, x: number, y: number, color = 'rgba(236,228,212,0.86)', size = 24, plate?: string) {
+  ctx.font = `500 ${size}px Pretendard, system-ui, sans-serif`;
+  const w = ctx.measureText(text).width;
+  const box: [number, number, number, number] = [x - w / 2 - 14, y - size * 0.85, w + 28, size * 1.7];
+  labelBoxes.push(box);
+  if (plate) {
+    ctx.fillStyle = plate;
+    ctx.beginPath();
+    ctx.roundRect(...box, 4);
+    ctx.fill();
+  }
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
   ctx.fillStyle = color;
@@ -117,13 +130,13 @@ function label(ctx: CanvasRenderingContext2D, text: string, x: number, y: number
 
 /** 왼쪽 눈금자: 바닥에서 1 m 마다 */
 function ruler(ctx: CanvasRenderingContext2D, x = 40) {
-  ctx.fillStyle = 'rgba(80,60,120,0.3)';
-  ctx.font = '600 15px Pretendard, system-ui, sans-serif';
+  ctx.fillStyle = 'rgba(236,228,212,0.58)';
+  ctx.font = '400 15px "IBM Plex Mono", ui-monospace, monospace';
   ctx.textAlign = 'left';
   ctx.textBaseline = 'middle';
   for (let k = 1; FLOOR - k * PX_PER_M > 40; k++) {
     const y = FLOOR - k * PX_PER_M;
-    ctx.fillRect(x, y - 1.5, 30, 3);
+    ctx.fillRect(x, y - 0.5, 24, 1);
     ctx.fillText(`${k} m`, x + 38, y);
   }
 }
@@ -133,7 +146,7 @@ export const SCENES: Scene[] = [
   {
     id: 'drop-race',
     starter: true,
-    title: '누가 먼저 떨어질까?',
+    title: '자유 낙하와 공기 저항',
     emoji: '🪶',
     cat: 'gravity',
     blurb: '볼링공, 사과, 깃털을 같은 높이에서 떨어뜨려요. 공기를 없애면 결과가 어떻게 달라질까요?',
@@ -156,8 +169,8 @@ export const SCENES: Scene[] = [
       /** 물체 바닥이 땅에서 h 만큼 떠 있게 */
       const yAt = (r: number) => FLOOR - height.value * PX_PER_M - r;
       const defs = [
-        { name: '볼링공', x: 400, make: (x: number) => sim.ball(x, yAt(36), 36, 'stone', { label: '볼링공', color: '#3c3c64', stroke: '#22223a', face: true, static: true, nopin: true }) },
-        { name: '사과', x: 800, make: (x: number) => sim.ball(x, yAt(26), 26, 'wood', { label: '사과', color: '#e63946', stroke: '#9d0208', deco: 'apple', static: true, nopin: true }) },
+        { name: '볼링공', x: 400, make: (x: number) => sim.ball(x, yAt(36), 36, 'stone', { label: '볼링공', color: '#2a2b33', stroke: '#111216', face: true, static: true, nopin: true }) },
+        { name: '사과', x: 800, make: (x: number) => sim.ball(x, yAt(26), 26, 'wood', { label: '사과', color: '#8e2f38', stroke: '#4a141a', deco: 'apple', static: true, nopin: true }) },
         { name: '깃털', x: 1200, make: (x: number) => sim.ball(x, yAt(26), 26, 'feather', { label: '깃털', ...clear, deco: 'feather', static: true, nopin: true }) },
       ];
       let items: MBody[] = [];
@@ -196,7 +209,7 @@ export const SCENES: Scene[] = [
             if (b.bounds.max.y >= FLOOR - 2) {
               landed.set(b, sim.time);
               results.push(`${defs[i].name} ${secs(sim.time - start)}초`);
-              sim.text(b.position.x, b.position.y - 70, `${landed.size}등`, '#e85d04');
+              sim.text(b.position.x, b.position.y - 70, `${landed.size}위`);
             }
           });
         },
@@ -206,12 +219,12 @@ export const SCENES: Scene[] = [
         },
         back: (ctx) => {
           const y = FLOOR - height.value * PX_PER_M;
-          ctx.strokeStyle = 'rgba(80,60,120,0.35)';
-          ctx.setLineDash([12, 10]);
-          ctx.lineWidth = 3;
+          ctx.strokeStyle = 'rgba(200,169,106,0.5)';
+          ctx.setLineDash([6, 8]);
+          ctx.lineWidth = 1.25;
           ctx.beginPath(); ctx.moveTo(200, y); ctx.lineTo(1400, y); ctx.stroke();
           ctx.setLineDash([]);
-          label(ctx, `출발 ${height.value} m`, 1490, y, 'rgba(40,30,70,0.7)', 22);
+          label(ctx, `출발 ${height.value} m`, 1490, y, 'rgba(236,228,212,0.72)', 22);
           ruler(ctx);
         },
       };
@@ -219,7 +232,7 @@ export const SCENES: Scene[] = [
   },
   {
     id: 'planets',
-    title: '행성마다 다른 점프',
+    title: '행성별 중력 가속도',
     emoji: '🪐',
     cat: 'gravity',
     blurb: '달, 화성, 지구, 목성에서 같은 속도로 점프하면 얼마나 높이 올라갈까요?',
@@ -238,7 +251,7 @@ export const SCENES: Scene[] = [
     build(sim) {
       sim.bounds();
       const cols = [
-        { n: '달 1.62 m/s²', short: '달', g: PLANET_G.moon, c: 'rgba(215,215,240,0.45)' },
+        { n: '달 1.62 m/s²', short: '달', g: PLANET_G.moon, c: 'rgba(215,215,240,0.3)' },
         { n: '화성 3.71 m/s²', short: '화성', g: PLANET_G.mars, c: 'rgba(255,160,120,0.22)' },
         { n: '지구 9.81 m/s²', short: '지구', g: 1, c: 'rgba(120,210,150,0.2)' },
         { n: '목성 24.8 m/s²', short: '목성', g: PLANET_G.jupiter, c: 'rgba(255,190,110,0.28)' },
@@ -246,12 +259,12 @@ export const SCENES: Scene[] = [
       const cw = sim.W / 4;
       cols.forEach((c, i) => {
         sim.zone({ kind: 'gravity', x: i * cw, y: -3000, w: cw, h: sim.H + 3000, g: { x: 0, y: c.g }, label: c.n, color: c.c, removable: false });
-        if (i) sim.wall(i * cw, (260 + FLOOR) / 2, 12, FLOOR - 260, { color: '#b4bac6', stroke: '#8a91a0' });
+        if (i) sim.wall(i * cw, (260 + FLOOR) / 2, 4, FLOOR - 260, { color: '#454850', stroke: '#4a4d55' });
       });
       const speed: Param = { id: 'v', label: '점프 속도', unit: 'm/s', min: 1, max: 6, step: 0.5, value: 4 };
-      const colors = ['#c9c9e8', '#ff8a5b', '#4dabf7', '#ffb347'];
+      const colors = ['#b9b8c4', '#a8644a', '#5a7fa6', '#b98a5a'];
       const R = 26;
-      const add = () => cols.forEach((_, i) => sim.ball(i * cw + cw / 2, FLOOR - R, R, 'rubber', { face: true, color: colors[i], stroke: '#555' }));
+      const add = () => cols.forEach((_, i) => sim.ball(i * cw + cw / 2, FLOOR - R, R, 'rubber', { face: true, color: colors[i], stroke: '#222' }));
       add();
       /** 칸마다 첫 점프의 최고 높이 (m). 땅에 다시 닿으면 기록을 멈춰요 */
       let peaks: (number | undefined)[] = [];
@@ -310,20 +323,20 @@ export const SCENES: Scene[] = [
             const h = (speed.value * speed.value) / (2 * G_EARTH * cols[i].g);
             const y = FLOOR - h * PX_PER_M;
             if (y > 40) {
-              ctx.strokeStyle = 'rgba(60,40,110,0.4)';
-              ctx.setLineDash([8, 6]);
-              ctx.lineWidth = 2;
+              ctx.strokeStyle = 'rgba(200,169,106,0.55)';
+              ctx.setLineDash([5, 6]);
+              ctx.lineWidth = 1.25;
               ctx.beginPath(); ctx.moveTo(i * cw + 60, y); ctx.lineTo(i * cw + cw - 20, y); ctx.stroke();
               ctx.setLineDash([]);
-              ctx.font = '600 14px Pretendard, system-ui';
+              ctx.font = '400 14px "IBM Plex Mono", ui-monospace, monospace';
               ctx.textAlign = 'right';
-              ctx.fillStyle = 'rgba(60,40,110,0.6)';
+              ctx.fillStyle = 'rgba(226,200,143,0.8)';
               ctx.fillText(`이론 ${h.toFixed(2)} m`, i * cw + cw - 20, y - 10);
             }
             for (let y2 = FLOOR - 100, k = 1; y2 > 80; y2 -= 100, k++) {
-              ctx.fillStyle = 'rgba(60,40,110,0.25)';
-              ctx.fillRect(i * cw + 14, y2, 24, 3);
-              ctx.font = '600 14px Pretendard, system-ui';
+              ctx.fillStyle = 'rgba(236,228,212,0.3)';
+              ctx.fillRect(i * cw + 14, y2, 20, 1);
+              ctx.font = '400 13px "IBM Plex Mono", ui-monospace, monospace';
               ctx.textAlign = 'left';
               ctx.fillText(`${k} m`, i * cw + 42, y2 + 5);
             }
@@ -334,7 +347,7 @@ export const SCENES: Scene[] = [
   },
   {
     id: 'solar',
-    title: '작은 태양계',
+    title: '궤도 운동',
     emoji: '☀️',
     cat: 'gravity',
     blurb: '별 주위를 도는 행성. 직접 던져서 원 궤도와 타원 궤도를 만들어 보세요.',
@@ -359,14 +372,14 @@ export const SCENES: Scene[] = [
       const place = () => {
         planets.forEach((p) => sim.remove(p));
         const defs = [
-          { r: 140, size: 13, c: '#adb5bd' },
-          { r: 240, size: 20, c: '#4dabf7' },
-          { r: 350, size: 24, c: '#ff922b' },
+          { r: 140, size: 13, c: '#a7a39b' },
+          { r: 240, size: 20, c: '#5a7fa6' },
+          { r: 350, size: 24, c: '#b07a4f' },
         ];
         planets = defs.map((d, i) => {
           const a = i * 2.1;
           const v = Math.sqrt(70 / d.r) * (1000 / 60);
-          const b = sim.ball(800 + Math.cos(a) * d.r, 450 + Math.sin(a) * d.r, d.size, 'rubber', { color: d.c, stroke: '#223', face: true, air: 0 });
+          const b = sim.ball(800 + Math.cos(a) * d.r, 450 + Math.sin(a) * d.r, d.size, 'rubber', { color: d.c, stroke: '#111', face: true, air: 0 });
           Body.setVelocity(b, { x: -Math.sin(a) * v, y: Math.cos(a) * v });
           return b;
         });
@@ -396,20 +409,20 @@ export const SCENES: Scene[] = [
     },
     build(sim) {
       sim.bounds();
-      sim.wall(1392, 330, 14, 180, { color: '#f8f9fa', stroke: '#adb5bd' });
-      sim.wall(1406, 640, 16, 440, { color: '#868e96', stroke: '#495057' });
-      sim.wall(1240, 440, 12, 12, { color: '#f03e3e', stroke: '#c92a2a' });
-      sim.wall(1374, 440, 26, 10, { color: '#f03e3e', stroke: '#c92a2a' });
+      sim.wall(1392, 330, 14, 180, { color: '#454850', stroke: '#6a6d75' });
+      sim.wall(1406, 640, 16, 440, { color: '#2a2c31', stroke: '#45484f' });
+      sim.wall(1240, 440, 12, 12, { color: '#9c7f45', stroke: '#6a5530' });
+      sim.wall(1374, 440, 26, 10, { color: '#9c7f45', stroke: '#6a5530' });
       sim.goal(1308, 468, 100, 16, 'hoop');
-      const ball = (x: number, y: number) => sim.ball(x, y, 24, 'rubber', { color: '#f77f00', stroke: '#9c4a00', face: true });
+      const ball = (x: number, y: number) => sim.ball(x, y, 24, 'rubber', { color: '#a8643a', stroke: '#4f2c16', face: true });
       ball(180, FLOOR - 30); ball(240, FLOOR - 30); ball(300, FLOOR - 30);
       let score = 0;
       const angle: Param = { id: 'deg', label: '던지는 각도', unit: '°', min: 10, max: 80, step: 1, value: 50 };
       const speed: Param = { id: 'v', label: '던지는 속력', unit: 'm/s', min: 3, max: 15, step: 0.1, value: 11 };
       const L0 = { x: 420, y: FLOOR - 140 };
-      const launch = (deg: number, v: number, color = '#f77f00', ghost = false, from = L0) => {
+      const launch = (deg: number, v: number, color = '#a8643a', ghost = false, from = L0) => {
         // 농구공 정도의 공기 저항: ½ρC_dA/m ≈ 0.02 /m → 10 m/s 에서 γ ≈ 0.2 /s (frictionAir = γ/60)
-        const b = sim.ball(from.x, from.y, 18, 'rubber', { color, stroke: '#7a3a00', face: true, air: 0.0035 });
+        const b = sim.ball(from.x, from.y, 18, 'rubber', { color, stroke: '#3d2210', face: true, air: 0.0035 });
         if (ghost) b.collisionFilter.group = -7; // 동시에 던진 공끼리는 부딪히지 않게
         const th = (deg * Math.PI) / 180;
         Body.setVelocity(b, { x: velFromSI(v * Math.cos(th)), y: -velFromSI(v * Math.sin(th)) });
@@ -427,7 +440,7 @@ export const SCENES: Scene[] = [
           options: ['30°', '45°', '60°', '셋 다 같다'],
           start: () => {
             race.forEach((r) => sim.remove(r.b));
-            race = ([30, 45, 60] as const).map((deg, i) => ({ b: launch(deg, PRED_V, ['#2a78d6', '#eb6834', '#1baf7a'][i], true, G0), deg, rose: false }));
+            race = ([30, 45, 60] as const).map((deg, i) => ({ b: launch(deg, PRED_V, ['#5a7fa6', '#b07a4f', '#6e9a7f'][i], true, G0), deg, rose: false }));
           },
           result: () => {
             if (!race.length || race.some((r) => r.x === undefined)) return undefined;
@@ -446,7 +459,7 @@ export const SCENES: Scene[] = [
           d.scored = true;
           score++;
           sim.confetti(1308, 470);
-          sim.text(1308, 380, `골인 ${score}`, '#f77f00');
+          sim.text(1308, 380, `${score}`);
         },
         tick: () => {
           for (const r of race) {
@@ -465,16 +478,16 @@ export const SCENES: Scene[] = [
           { label: '공 더 주기', icon: '🏀', run: () => { ball(200, 500); ball(260, 500); } },
         ],
         back: (ctx) => {
-          ctx.strokeStyle = 'rgba(255,255,255,0.9)';
-          ctx.lineWidth = 3;
+          ctx.strokeStyle = 'rgba(200,169,106,0.7)';
+          ctx.lineWidth = 1.5;
           ctx.strokeRect(1392 - 7 - 40, 290, 40, 40);
           // 발사대와 공기 저항이 없을 때의 궤적(점선)
           const th = (angle.value * Math.PI) / 180, v = speed.value;
-          ctx.fillStyle = '#6b7282';
+          ctx.fillStyle = '#26282d';
           ctx.fillRect(L0.x - 30, L0.y + 18, 60, FLOOR - L0.y - 18);
-          ctx.strokeStyle = 'rgba(60,40,110,0.55)';
-          ctx.lineWidth = 3;
-          ctx.setLineDash([10, 8]);
+          ctx.strokeStyle = 'rgba(200,169,106,0.55)';
+          ctx.lineWidth = 1.25;
+          ctx.setLineDash([5, 7]);
           ctx.beginPath();
           for (let t = 0; t < 4; t += 0.02) {
             const x = L0.x + v * Math.cos(th) * t * PX_PER_M;
@@ -484,15 +497,15 @@ export const SCENES: Scene[] = [
           }
           ctx.stroke();
           ctx.setLineDash([]);
-          ctx.strokeStyle = 'rgba(60,40,110,0.8)';
-          ctx.lineWidth = 5;
+          ctx.strokeStyle = 'rgba(226,200,143,0.9)';
+          ctx.lineWidth = 3;
           ctx.beginPath(); ctx.moveTo(L0.x, L0.y); ctx.lineTo(L0.x + Math.cos(th) * 70, L0.y - Math.sin(th) * 70); ctx.stroke();
-          label(ctx, `${angle.value}° · ${speed.value.toFixed(1)} m/s`, L0.x, L0.y - 110, 'rgba(40,30,70,0.75)', 20);
+          label(ctx, `${angle.value}° · ${speed.value.toFixed(1)} m/s`, L0.x, L0.y - 110, 'rgba(236,228,212,0.75)', 20);
         },
         front: (ctx) => {
           // 그물
-          ctx.strokeStyle = 'rgba(255,255,255,0.95)';
-          ctx.lineWidth = 2;
+          ctx.strokeStyle = 'rgba(236,228,212,0.55)';
+          ctx.lineWidth = 1;
           for (let i = 0; i <= 6; i++) {
             const x1 = 1240 + (i * 140) / 6, x2 = 1270 + (i * 80) / 6;
             ctx.beginPath(); ctx.moveTo(x1, 444); ctx.lineTo(x2, 520); ctx.stroke();
@@ -509,7 +522,7 @@ export const SCENES: Scene[] = [
   // ───────────────────────────── 마찰 ─────────────────────────────
   {
     id: 'slide-race',
-    title: '경사면 미끄럼 대결',
+    title: '경사면과 정지 마찰',
     emoji: '🛷',
     cat: 'friction',
     blurb: '얼음, 나무, 고무 블록을 같은 경사면에 올려요. 어느 각도부터 미끄러지기 시작할까요?',
@@ -528,7 +541,7 @@ export const SCENES: Scene[] = [
     build(sim) {
       sim.bounds({ ceiling: false });
       const lanes: { mat: MatId; name: string; muS: number; mu: number; band: string }[] = [
-        { mat: 'ice', name: '얼음', muS: 0.05, mu: 0.03, band: 'rgba(190,235,255,0.25)' },
+        { mat: 'ice', name: '얼음', muS: 0.05, mu: 0.03, band: 'rgba(170,205,225,0.25)' },
         { mat: 'wood', name: '나무', muS: 0.4, mu: 0.3, band: 'rgba(224,169,109,0.16)' },
         { mat: 'rubber', name: '고무', muS: 1.0, mu: 0.8, band: 'rgba(255,107,107,0.1)' },
       ];
@@ -540,8 +553,8 @@ export const SCENES: Scene[] = [
       };
       lanes.forEach((l, i) => {
         sim.zone({ kind: 'drag', x: 0, y: laneY(i) - 253, w: sim.W, h: 245, color: l.band, removable: false });
-        sim.line(X1 + 60, laneY(i), 1560, laneY(i), 16, { friction: 0, color: '#9c89b8', stroke: '#6f5d94' });
-        sim.wall(1560, laneY(i) - 50, 16, 100, { color: '#8f96a4', stroke: '#646b7a' });
+        sim.line(X1 + 60, laneY(i), 1560, laneY(i), 16, { friction: 0, color: '#3d4048', stroke: '#666a73' });
+        sim.wall(1560, laneY(i) - 50, 16, 100, { color: '#454850', stroke: '#6d7179' });
       });
       let rampBodies: MBody[] = [];
       const ang = () => (slope.value * Math.PI) / 180;
@@ -550,7 +563,7 @@ export const SCENES: Scene[] = [
         rampBodies.forEach((b) => sim.remove(b));
         rampBodies = [];
         const a = ang(), R = 400, d = R * Math.tan(a / 2), N = 10;
-        const o = { friction: 0, color: '#9c89b8', stroke: '#6f5d94' };
+        const o = { friction: 0, color: '#3d4048', stroke: '#666a73' };
         lanes.forEach((_, i) => {
           const y = laneY(i);
           const cx = X1 + d, cy = y - R;
@@ -658,8 +671,8 @@ export const SCENES: Scene[] = [
           const tan = Math.tan(ang());
           lanes.forEach((l, i) => {
             const y = laneY(i) - 70;
-            label(ctx, l.name, 1250, y, 'rgba(60,40,110,0.6)', 30);
-            label(ctx, `μs ${l.muS.toFixed(2)} · μk ${l.mu.toFixed(2)} · ${tan > l.muS ? '미끄러짐' : '멈춰 있음'}`, 1250, y + 36, 'rgba(60,40,110,0.5)', 18);
+            label(ctx, l.name, 1250, y, 'rgba(236,228,212,0.78)', 28);
+            label(ctx, `μs ${l.muS.toFixed(2)} · μk ${l.mu.toFixed(2)} · ${tan > l.muS ? '미끄러짐' : '멈춰 있음'}`, 1250, y + 36, 'rgba(226,200,143,0.8)', 17);
           });
         },
       };
@@ -667,7 +680,7 @@ export const SCENES: Scene[] = [
   },
   {
     id: 'curling',
-    title: '바닥 위 컬링',
+    title: '운동 마찰과 제동 거리',
     emoji: '🥌',
     cat: 'friction',
     blurb: '얼음판, 나무 마루, 잔디밭. 같은 속력으로 밀어도 멈추는 곳이 달라요.',
@@ -685,20 +698,20 @@ export const SCENES: Scene[] = [
       limit: ['실제 컬링 얼음은 μ ≈ 0.01 정도로 훨씬 미끄러워서, 화면(16 m) 안에 멈추도록 크게 잡았어요', '돌이 벽에 부딪히면 이론 거리와 달라져요'],
     },
     build(sim) {
-      sim.bounds({ ceiling: true, floor: sim.H, color: '#8aa9c4' });
+      sim.bounds({ ceiling: true, floor: sim.H, color: '#2a3038' });
       const lanes = [
-        { name: '얼음판', mu: 0.05, c: 'rgba(190,230,255,0.55)' },
-        { name: '나무 마루', mu: 0.2, c: 'rgba(222,184,135,0.6)' },
-        { name: '잔디밭', mu: 0.5, c: 'rgba(130,200,100,0.55)' },
+        { name: '얼음판', mu: 0.05, c: 'rgba(170,205,225,0.4)' },
+        { name: '나무 마루', mu: 0.2, c: 'rgba(170,125,80,0.45)' },
+        { name: '잔디밭', mu: 0.5, c: 'rgba(100,140,90,0.45)' },
       ];
       const X0 = 160;
       const lh = sim.H / 3;
       const speed: Param = { id: 'v', label: '미는 속력', unit: 'm/s', min: 1, max: 10, step: 0.5, value: 4 };
       lanes.forEach((l, i) => {
         sim.zone({ kind: 'drag', x: 0, y: i * lh, w: sim.W, h: lh, mu: l.mu, color: l.c, label: `${l.name} μ = ${l.mu.toFixed(2)}`, removable: false });
-        if (i) sim.wall(sim.W / 2, i * lh, sim.W, 12, { color: '#8aa9c4', stroke: '#5f7f9c' });
+        if (i) sim.wall(sim.W / 2, i * lh, sim.W, 6, { color: '#2a3038', stroke: '#3d444e' });
       });
-      const stone = (y: number) => sim.ball(X0, y, 26, 'stone', { face: true, color: '#ced4da', stroke: '#495057', air: 0 });
+      const stone = (y: number) => sim.ball(X0, y, 26, 'stone', { face: true, color: '#8c8780', stroke: '#2a2826', air: 0 });
       let shots: { b: MBody; lane: number; v: number }[] = [];
       const clearAll = () => { sim.bodies().forEach((b) => { if (!b.isStatic) sim.remove(b); }); shots = []; };
       const place = () => { clearAll(); lanes.forEach((_, i) => stone(i * lh + lh / 2)); };
@@ -748,19 +761,19 @@ export const SCENES: Scene[] = [
         back: (ctx) => {
           lanes.forEach((l, i) => {
             const cx = 1300, cy = i * lh + lh / 2;
-            for (const [r, c] of [[110, '#4d96ff'], [80, '#fff'], [50, '#ef476f'], [20, '#fff']] as const) {
-              ctx.fillStyle = c; ctx.globalAlpha = 0.75;
+            for (const [r, c] of [[110, '#2f4a6e'], [80, '#1a1c20'], [50, '#6e2a32'], [20, '#1a1c20']] as const) {
+              ctx.fillStyle = c; ctx.globalAlpha = 0.85;
               ctx.beginPath(); ctx.arc(cx, cy, r, 0, 7); ctx.fill();
             }
             ctx.globalAlpha = 1;
-            ctx.strokeStyle = 'rgba(0,0,0,0.15)'; ctx.lineWidth = 3; ctx.setLineDash([10, 10]);
+            ctx.strokeStyle = 'rgba(236,228,212,0.2)'; ctx.lineWidth = 1; ctx.setLineDash([5, 7]);
             ctx.beginPath(); ctx.moveTo(X0, i * lh + 20); ctx.lineTo(X0, (i + 1) * lh - 20); ctx.stroke();
             // 이론상 멈추는 곳
             const x = X0 + stopAt(speed.value, l.mu) * PX_PER_M;
             if (x < sim.W - 30) {
-              ctx.strokeStyle = 'rgba(40,30,70,0.55)'; ctx.setLineDash([8, 8]);
+              ctx.strokeStyle = 'rgba(200,169,106,0.6)'; ctx.setLineDash([5, 6]);
               ctx.beginPath(); ctx.moveTo(x, i * lh + 40); ctx.lineTo(x, (i + 1) * lh - 40); ctx.stroke();
-              label(ctx, `${stopAt(speed.value, l.mu).toFixed(1)} m`, x, (i + 1) * lh - 26, 'rgba(40,30,70,0.7)', 18);
+              label(ctx, `${stopAt(speed.value, l.mu).toFixed(1)} m`, x, (i + 1) * lh - 26, 'rgba(226,200,143,0.85)', 18);
             }
             ctx.setLineDash([]);
           });
@@ -773,7 +786,7 @@ export const SCENES: Scene[] = [
   {
     id: 'float-sink',
     starter: true,
-    title: '뜰까, 가라앉을까?',
+    title: '부력과 밀도',
     emoji: '🛁',
     cat: 'fluid',
     blurb: '물통에 여러 재료를 넣어 봐요. 나무는 뜨고 쇠는 가라앉아요. 얼음은 얼마나 잠길까요?',
@@ -790,7 +803,7 @@ export const SCENES: Scene[] = [
     },
     build(sim) {
       sim.bounds({ ceiling: true });
-      const glass = { color: 'rgba(170,210,235,0.85)', stroke: '#7fb0cc' };
+      const glass = { color: 'rgba(170,205,225,0.35)', stroke: 'rgba(220,238,246,0.6)' };
       sim.line(240, 300, 240, FLOOR, 16, glass);
       sim.line(1360, 300, 1360, FLOOR, 16, glass);
       sim.zone({ kind: 'water', x: 248, y: 420, w: 1104, h: FLOOR - 420, density: 0.001, removable: false });
@@ -803,14 +816,14 @@ export const SCENES: Scene[] = [
       sim.ball(1500, 700, 34, 'balloon', { face: true });
       return {
         back: (ctx) => {
-          label(ctx, '물보다 가벼우면 둥둥 · 무거우면 꼬르륵', 800, 360, 'rgba(60,90,140,0.45)', 22);
+          label(ctx, '밀도 < 1000 kg/m³ 이면 뜨고, 크면 가라앉아요', 800, 360, 'rgba(236,228,212,0.5)', 20);
         },
       };
     },
   },
   {
     id: 'pour',
-    title: '물의 흐름과 배',
+    title: '물의 흐름과 부력',
     emoji: '💧',
     cat: 'fluid',
     blurb: '물을 부어 물레방아를 돌리고 나무배를 띄워요. 배에 상자를 몇 개까지 실을 수 있을까요?',
@@ -826,14 +839,14 @@ export const SCENES: Scene[] = [
     },
     build(sim) {
       sim.bounds();
-      sim.line(250, 230, 375, 370, 14, { color: '#adb5bd', stroke: '#868e96' });
-      sim.line(555, 230, 435, 370, 14, { color: '#adb5bd', stroke: '#868e96' });
+      sim.line(250, 230, 375, 370, 14, { color: '#454850', stroke: '#6d7179' });
+      sim.line(555, 230, 435, 370, 14, { color: '#454850', stroke: '#6d7179' });
       // 물레방아
       const cx = 405, cy = 560;
       const parts = [0, 1, 2, 3].map((k) => Bodies.rectangle(cx, cy, 230, 14, { angle: (k * Math.PI) / 4, chamfer: { radius: 5 } }));
-      const wheel = sim.compound(parts, 'wood', { color: '#e9c46a', stroke: '#b08a2e' });
+      const wheel = sim.compound(parts, 'wood', { color: '#b8995a', stroke: '#5e4b28' });
       sim.link({ point: { x: cx, y: cy } }, { body: wheel, point: { x: cx, y: cy } }, 'rope', { stiffness: 1, length: 0 });
-      sim.wall(620, 760, 16, 200, { color: '#adb5bd', stroke: '#868e96' });
+      sim.wall(620, 760, 16, 200, { color: '#454850', stroke: '#6d7179' });
       // 미리 채워둔 물
       for (let y = FLOOR - 10; y > FLOOR - 120; y -= 15) {
         for (let x = 650; x < 1550; x += 16) sim.drop(x + (Math.random() - 0.5) * 3, y);
@@ -844,7 +857,7 @@ export const SCENES: Scene[] = [
         Bodies.rectangle(bx, by, 220, 16),
         Bodies.rectangle(bx - 104, by - 28, 14, 60),
         Bodies.rectangle(bx + 104, by - 28, 14, 60),
-      ], 'wood', { color: '#bc6c25', stroke: '#7f4310' });
+      ], 'wood', { color: '#7a4f2c', stroke: '#3f2814' });
       void boat;
       return {
         actions: [{ label: '물 비우기', icon: '🫗', run: () => [...sim.drops].forEach((b) => sim.remove(b)) }],
@@ -854,7 +867,7 @@ export const SCENES: Scene[] = [
   },
   {
     id: 'wind',
-    title: '바람 터널',
+    title: '풍동',
     emoji: '🌬️',
     cat: 'fluid',
     blurb: '선풍기 바람에 어떤 물체가 밀려날까요? 바람을 이용해 바구니에 넣어 보세요.',
@@ -873,13 +886,13 @@ export const SCENES: Scene[] = [
       sim.bounds({ ceiling: true });
       sim.zone({ kind: 'wind', x: 100, y: 120, w: 260, h: FLOOR - 120, dir: { x: 0, y: -1 }, strength: 2.6, removable: false });
       sim.zone({ kind: 'wind', x: 360, y: 120, w: 760, h: 260, dir: { x: 1, y: 0 }, strength: 2, removable: false });
-      const cup = { color: '#c08552', stroke: '#8c5a2b' };
+      const cup = { color: '#8a6c3c', stroke: '#4f3d20' };
       sim.line(1330, 150, 1345, 300, 14, cup);
       sim.line(1345, 300, 1505, 300, 14, cup);
       sim.line(1505, 300, 1520, 150, 14, cup);
       sim.goal(1425, 260, 140, 50, 'basket');
-      const pal = ['#ffadad', '#ffd6a5', '#caffbf', '#9bf6ff', '#bdb2ff'];
-      for (let i = 0; i < 5; i++) sim.ball(500 + i * 90, FLOOR - 30, 20, 'feather', { face: true, color: pal[i], stroke: '#999' });
+      const pal = ['#c9a39c', '#cdb48c', '#a9bfa4', '#9fbcc6', '#aaa3c2'];
+      for (let i = 0; i < 5; i++) sim.ball(500 + i * 90, FLOOR - 30, 20, 'feather', { face: true, color: pal[i], stroke: '#555' });
       sim.ball(1000, FLOOR - 30, 22, 'wood', { face: true });
       sim.ball(1100, FLOOR - 30, 22, 'metal', { face: true });
       let n = 0;
@@ -889,22 +902,22 @@ export const SCENES: Scene[] = [
           if (!d || d.scored) return;
           d.scored = true; n++;
           sim.confetti(1425, 260);
-          sim.text(1425, 120, '골인', '#2a9d8f');
+          sim.text(1425, 120, `${n}`);
         },
         hud: () => `바구니: ${n}`,
         back: (ctx, _s, t) => {
           // 선풍기
           const fx = 230, fy = FLOOR - 10;
-          ctx.fillStyle = '#495057';
+          ctx.fillStyle = '#2a2c31';
           ctx.fillRect(fx - 90, fy - 24, 180, 24);
           ctx.save();
           ctx.translate(fx, fy - 30);
           ctx.scale(1, 0.25);
           ctx.rotate(t / 60);
-          ctx.fillStyle = '#74c0fc';
+          ctx.fillStyle = 'rgba(184,153,90,0.7)';
           for (let k = 0; k < 4; k++) { ctx.rotate(Math.PI / 2); ctx.beginPath(); ctx.ellipse(55, 0, 55, 18, 0, 0, 7); ctx.fill(); }
           ctx.restore();
-          label(ctx, '목표', 1425, 110, 'rgba(140,90,43,0.8)', 26);
+          label(ctx, '목표', 1425, 110, 'rgba(226,200,143,0.85)', 22);
         },
       };
     },
@@ -913,7 +926,7 @@ export const SCENES: Scene[] = [
   // ───────────────────────────── 전기와 자석 ─────────────────────────────
   {
     id: 'charges',
-    title: '밀고 당기는 전기',
+    title: '쿨롱 힘',
     emoji: '⚡',
     cat: 'em',
     blurb: '+ 구슬과 − 구슬을 놓아 봐요. 부호가 다르면 당기고, 같으면 밀어내요.',
@@ -930,7 +943,7 @@ export const SCENES: Scene[] = [
       limit: ['실제로 1 kg 물체에 60 μC 를 모으면 주변 공기가 방전돼요', '움직이는 전하가 만드는 자기장과 전자기파는 무시해요'],
     },
     build(sim) {
-      sim.bounds({ ceiling: true, floor: sim.H, color: '#3d3a6b' });
+      sim.bounds({ ceiling: true, floor: sim.H, color: '#1c1e28' });
       // 고정된 구슬 주위를 반대 전기 구슬이 빙글빙글 (원자처럼!)
       const orbit = (cx: number, cy: number, q: number) => {
         sim.charge(cx, cy, q, { static: true });
@@ -952,7 +965,7 @@ export const SCENES: Scene[] = [
   },
   {
     id: 'magnets',
-    title: '막대자석과 쇠구슬',
+    title: '막대자석과 자기력',
     emoji: '🧲',
     cat: 'em',
     blurb: '막대자석과 쇠구슬로 자기력을 살펴봐요. 극을 돌려 가며 붙고 밀어내는 모습을 비교해요.',
@@ -971,7 +984,7 @@ export const SCENES: Scene[] = [
       limit: ['실제 두 막대자석 사이의 힘은 멀리서 거리의 네제곱에 반비례할 만큼 빨리 약해져요', '힘의 세기는 SI 단위가 아니라 화면에 맞춰 정한 값이에요'],
     },
     build(sim) {
-      sim.bounds({ ceiling: true, floor: sim.H, color: '#b5a48a' });
+      sim.bounds({ ceiling: true, floor: sim.H, color: '#2a2925' });
       sim.magnet(480, 450, 0, { size: 140 });
       sim.magnet(1120, 450, Math.PI, { size: 140 });
       for (let i = 0; i < 14; i++) {
@@ -1073,13 +1086,13 @@ export const SCENES: Scene[] = [
         },
         hud: () => `B ${field.value.toFixed(1)}×10⁴ T · v ${speed.value.toFixed(1)} m/s → r = mv/qB = ${radius(speed.value).toFixed(2)} m · 한 바퀴 ${period().toFixed(2)} s`,
         back: (ctx) => {
-          label(ctx, '⊙ 왼쪽으로 휘는 자기장', 480, 120, 'rgba(200,160,255,0.8)', 22);
-          label(ctx, '⊗ 오른쪽으로 휘는 자기장', 1120, 120, 'rgba(255,190,110,0.8)', 22);
+          label(ctx, '⊙ 왼쪽으로 휘는 자기장', 480, 120, 'rgba(205,194,236,0.95)', 21, 'rgba(14,13,22,0.92)');
+          label(ctx, '⊗ 오른쪽으로 휘는 자기장', 1120, 120, 'rgba(232,208,155,0.95)', 21, 'rgba(18,15,10,0.92)');
           // 예상 궤도: 위로 쏜 구슬은 qB > 0 이면 왼쪽으로 돌아요 (두 구슬 모두 qB > 0)
           const r = radius(speed.value) * PX_PER_M;
-          ctx.strokeStyle = 'rgba(255,255,255,0.35)';
-          ctx.lineWidth = 2;
-          ctx.setLineDash([8, 8]);
+          ctx.strokeStyle = 'rgba(200,169,106,0.45)';
+          ctx.lineWidth = 1.25;
+          ctx.setLineDash([5, 7]);
           for (const p of SHOTS) { ctx.beginPath(); ctx.arc(p.x - r, p.y, r, 0, Math.PI * 2); ctx.stroke(); }
           ctx.setLineDash([]);
           for (const p of SHOTS) {
@@ -1119,7 +1132,7 @@ export const SCENES: Scene[] = [
         anchors.push({ x: ax, y: top });
         const b = sim.ball(ax, top + L, r, 'metal', { inertia: Infinity, restitution: 1, friction: 0, air: 0, removable: false, face: true });
         b.slop = r * 0.02;
-        sim.link({ point: { x: ax, y: top } }, { body: b, point: { x: ax, y: top + L } }, 'rope', { stiffness: 1, color: '#495057' });
+        sim.link({ point: { x: ax, y: top } }, { body: b, point: { x: ax, y: top + L } }, 'rope', { stiffness: 1, color: '#c9c3b6' });
         balls.push(b);
       }
       const lift = (left: number, right = 0) => {
@@ -1139,11 +1152,11 @@ export const SCENES: Scene[] = [
           { label: '양쪽 1개씩', icon: '↔️', run: () => lift(1, 1) },
         ],
         back: (ctx) => {
-          ctx.strokeStyle = '#495057'; ctx.lineWidth = 14; ctx.lineCap = 'round';
+          ctx.strokeStyle = '#a88a52'; ctx.lineWidth = 7; ctx.lineCap = 'round';
           ctx.beginPath();
           ctx.moveTo(x0 - 160, FLOOR); ctx.lineTo(x0 - 160, top); ctx.lineTo(x0 + (n - 1) * r * 1.98 + 160, top); ctx.lineTo(x0 + (n - 1) * r * 1.98 + 160, FLOOR);
           ctx.stroke();
-          ctx.fillStyle = '#6c757d';
+          ctx.fillStyle = '#1c1d21';
           ctx.fillRect(x0 - 260, FLOOR - 10, (n - 1) * r * 1.98 + 520, 30);
         },
       };
@@ -1177,13 +1190,13 @@ export const SCENES: Scene[] = [
         if (ball) sim.remove(ball);
         const th = -1.25;
         ball = sim.ball(anchor.x + Math.sin(th) * L, anchor.y + Math.cos(th) * L, 20, 'stone', { face: true, static: true, nopin: true });
-        sim.link({ point: anchor }, { body: ball, point: { ...ball.position } }, 'rope', { stiffness: 1, color: '#495057' });
+        sim.link({ point: anchor }, { body: ball, point: { ...ball.position } }, 'rope', { stiffness: 1, color: '#c9c3b6' });
         dominos = [];
         let x = 300, h = 56;
-        const colors = ['#2b2d42', '#ef476f', '#118ab2', '#06d6a0', '#ffd166'];
+        const colors = ['#1c1d21', '#6e2a32', '#2f4a6e', '#2f5a48', '#8a6c3c'];
         for (let i = 0; x < 1400; i++) {
           const w = Math.max(10, h * 0.2);
-          dominos.push(sim.box(x, FLOOR - h / 2, w, h, 'wood', { color: colors[i % 5], stroke: '#111', deco: 'domino', density: 0.002, friction: 0.3, frictionStatic: 0.1, label: 'domino' }));
+          dominos.push(sim.box(x, FLOOR - h / 2, w, h, 'wood', { color: colors[i % 5], stroke: '#000', deco: 'domino', density: 0.002, friction: 0.3, frictionStatic: 0.1, label: 'domino' }));
           x += h * 0.55 + 4;
           h *= 1.05;
         }
@@ -1218,7 +1231,7 @@ export const SCENES: Scene[] = [
   {
     id: 'tower',
     starter: true,
-    title: '탑 무너뜨리기',
+    title: '진자와 구조물 붕괴',
     emoji: '🏗️',
     cat: 'collision',
     blurb: '철거 공으로 상자 탑을 무너뜨려요. 공의 재료와 높이를 바꾸면 결과가 어떻게 달라질까요?',
@@ -1245,7 +1258,7 @@ export const SCENES: Scene[] = [
         boxes.forEach((b) => sim.remove(b));
         const th = -1;
         ball = sim.ball(anchor.x + Math.sin(th) * L, anchor.y + Math.cos(th) * L, 56, 'metal', { static: true, nopin: true, face: true });
-        sim.link({ point: anchor }, { body: ball, point: { ...ball.position } }, 'rope', { stiffness: 1, color: '#343a40' });
+        sim.link({ point: anchor }, { body: ball, point: { ...ball.position } }, 'rope', { stiffness: 1, color: '#c9c3b6' });
         boxes = [];
         const s = 58;
         for (let row = 0; row < 6; row++) {
@@ -1267,15 +1280,15 @@ export const SCENES: Scene[] = [
           return `무너진 상자: ${fell} / ${boxes.length}`;
         },
         back: (ctx) => {
-          ctx.fillStyle = '#495057';
-          ctx.fillRect(anchor.x - 80, 0, 160, 26);
+          ctx.fillStyle = '#a88a52';
+          ctx.fillRect(anchor.x - 80, 0, 160, 8);
         },
       };
     },
   },
   {
     id: 'billiards',
-    title: '당구: 2차원 충돌',
+    title: '2차원 탄성 충돌',
     emoji: '🎱',
     cat: 'collision',
     blurb: '흰 공으로 다른 공을 맞혀요. 부딪친 뒤 두 공이 어느 방향으로 갈라지는지 봐요.',
@@ -1292,7 +1305,7 @@ export const SCENES: Scene[] = [
       limit: ['실제 당구는 공의 회전과 미끄러짐이 결과를 크게 바꿔요'],
     },
     build(sim) {
-      const rail = { color: '#1b5e3b', stroke: '#0f3d26', restitution: 0.8, friction: 0.05, frictionStatic: 0 };
+      const rail = { color: '#3a2618', stroke: '#1e130b', restitution: 0.8, friction: 0.05, frictionStatic: 0 };
       const t = 36;
       sim.wall(sim.W / 2, t / 2, sim.W, t, rail);
       sim.wall(sim.W / 2, sim.H - t / 2, sim.W, t, rail);
@@ -1305,7 +1318,7 @@ export const SCENES: Scene[] = [
       pockets.forEach((p) => sim.goal(p.x, p.y, 70, 70, 'pocket', 'circle'));
       const R = 20;
       const opts = { restitution: 0.95, friction: 0.005, frictionStatic: 0, air: 0.0035 };
-      const colors = ['#ffd43b', '#4dabf7', '#ff6b6b', '#845ef7', '#ff922b', '#51cf66', '#c92a2a', '#212529', '#fcc419', '#1c7ed6', '#f03e3e', '#7048e8', '#e8590c', '#2f9e44', '#a61e4d'];
+      const colors = ['#c9a24e', '#2f4f86', '#9b3038', '#4b3a7a', '#b0602e', '#2f6b4b', '#6e1f28', '#141518', '#c9a24e', '#2f4f86', '#9b3038', '#4b3a7a', '#b0602e', '#2f6b4b', '#6e1f28'];
       let cue: MBody | undefined;
       let potted = 0;
       let respawnAt = 0;
@@ -1324,7 +1337,7 @@ export const SCENES: Scene[] = [
       };
       const placeCue = () => {
         const p = freeSpot();
-        cue = sim.ball(p.x, p.y, R, 'stone', { ...opts, color: '#fdfdfd', stroke: '#ccc', face: true });
+        cue = sim.ball(p.x, p.y, R, 'stone', { ...opts, color: '#efe9dc', stroke: '#8a8478', face: true });
       };
       const rack = () => {
         sim.bodies().forEach((b) => { if (!b.isStatic) sim.remove(b); });
@@ -1347,11 +1360,11 @@ export const SCENES: Scene[] = [
           if (b === cue) {
             cue = undefined;
             respawnAt = sim.steps + 50;
-            sim.text(p.x, p.y, '흰 공이 빠졌어요', '#fff');
+            sim.text(p.x, p.y, '흰 공 낙구');
           } else {
             potted++;
             sim.confetti(p.x, p.y);
-            sim.text(p.x, p.y + (p.y < 450 ? 60 : -60), potted === 15 ? '모두 넣었어요' : '들어감', '#ffe066');
+            sim.text(p.x, p.y + (p.y < 450 ? 60 : -60), potted === 15 ? '15 / 15' : `${potted}`);
           }
         },
         tick: () => { if (!cue && respawnAt && sim.steps >= respawnAt) { respawnAt = 0; placeCue(); } },
@@ -1359,10 +1372,10 @@ export const SCENES: Scene[] = [
         actions: [{ label: '다시 놓기', icon: '🔺', run: rack }],
         back: (ctx) => {
           for (const p of pockets) {
-            ctx.fillStyle = '#111';
+            ctx.fillStyle = '#050505';
             ctx.beginPath(); ctx.arc(p.x, p.y, 34, 0, 7); ctx.fill();
           }
-          ctx.strokeStyle = 'rgba(255,255,255,0.18)'; ctx.lineWidth = 3;
+          ctx.strokeStyle = 'rgba(200,169,106,0.22)'; ctx.lineWidth = 1;
           ctx.beginPath(); ctx.moveTo(420, 40); ctx.lineTo(420, sim.H - 40); ctx.stroke();
           ctx.beginPath(); ctx.arc(420, 450, 6, 0, 7); ctx.fillStyle = 'rgba(255,255,255,0.3)'; ctx.fill();
         },
@@ -1390,13 +1403,13 @@ export const SCENES: Scene[] = [
     },
     build(sim) {
       sim.bounds();
-      sim.line(120, 420, 620, 600, 16, { removable: true, color: '#8e7cc3', stroke: '#5e4b94' });
+      sim.line(120, 420, 620, 600, 16, { removable: true, color: '#3b3a37', stroke: '#5a554b' });
       sim.ball(180, 360, 26, 'rubber', { face: true });
       for (let i = 0; i < 4; i++) sim.box(1100, FLOOR - 28 - i * 56, 54, 54, 'wood');
       const seat = sim.box(1400, 560, 120, 16, 'wood');
       sim.link({ point: { x: 1350, y: 200 } }, { body: seat, point: { x: 1350, y: 560 } }, 'rope');
       sim.link({ point: { x: 1450, y: 200 } }, { body: seat, point: { x: 1450, y: 560 } }, 'rope');
-      sim.ball(1400, 520, 22, 'rubber', { face: true, color: '#74c0fc', stroke: '#1c7ed6' });
+      sim.ball(1400, 520, 22, 'rubber', { face: true, color: '#5a7fa6', stroke: '#22344d' });
     },
   },
 ];

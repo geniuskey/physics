@@ -23,39 +23,39 @@ export interface Material {
 
 export const MATERIALS: Record<MatId, Material> = {
   rubber: {
-    id: 'rubber', name: '고무', emoji: '🔴', blurb: '통통 잘 튀어요',
+    id: 'rubber', name: '고무', emoji: '🔴', blurb: '반발 계수 0.8 · 잘 튀어 올라요',
     density: 0.0012, friction: 0.9, frictionStatic: 1.2, restitution: 0.82, air: 0.01,
-    color: '#ff6b6b', stroke: '#c94646', pitch: 520,
+    color: '#9a4248', stroke: '#561f25', pitch: 520,
   },
   wood: {
-    id: 'wood', name: '나무', emoji: '🪵', blurb: '가볍고 물에 떠요',
+    id: 'wood', name: '나무', emoji: '🪵', blurb: '600 kg/m³ · 물보다 가벼워 떠요',
     density: 0.0006, friction: 0.6, frictionStatic: 0.8, restitution: 0.25, air: 0.01,
-    color: '#e0a96d', stroke: '#a8723c', pitch: 300,
+    color: '#8a5e3b', stroke: '#4a3020', pitch: 300,
   },
   metal: {
-    id: 'metal', name: '쇠', emoji: '⚙️', blurb: '무겁고 자석에 붙어요',
+    id: 'metal', name: '쇠', emoji: '⚙️', blurb: '6500 kg/m³ · 자석에 끌려요',
     density: 0.0065, friction: 0.35, frictionStatic: 0.5, restitution: 0.12, air: 0.01,
-    color: '#9aa7bb', stroke: '#5f6b80', magnetic: true, pitch: 900,
+    color: '#9ba0a6', stroke: '#4e5359', magnetic: true, pitch: 900,
   },
   ice: {
-    id: 'ice', name: '얼음', emoji: '🧊', blurb: '쭉쭉 미끄러져요',
+    id: 'ice', name: '얼음', emoji: '🧊', blurb: 'μ ≈ 0 · 마찰 없이 미끄러져요',
     density: 0.0009, friction: 0.0, frictionStatic: 0.0, restitution: 0.1, air: 0.005,
-    color: '#bfeaff', stroke: '#6fb9dd', pitch: 1200,
+    color: '#a9cbdb', stroke: '#5f8ea6', pitch: 1200,
   },
   balloon: {
-    id: 'balloon', name: '풍선', emoji: '🎈', blurb: '둥실 위로 떠올라요',
+    id: 'balloon', name: '풍선', emoji: '🎈', blurb: '공기보다 가벼워 떠올라요',
     density: 0.0002, friction: 0.4, frictionStatic: 0.5, restitution: 0.6, air: 0.04,
-    color: '#ff9bd2', stroke: '#d0609e', lift: 0.0003, pitch: 700,
+    color: '#c79f94', stroke: '#7d5a51', lift: 0.0003, pitch: 700,
   },
   stone: {
-    id: 'stone', name: '돌', emoji: '🪨', blurb: '묵직하고 단단해요',
+    id: 'stone', name: '돌', emoji: '🪨', blurb: '2800 kg/m³ · 무겁고 단단해요',
     density: 0.0028, friction: 0.7, frictionStatic: 0.9, restitution: 0.15, air: 0.01,
-    color: '#a39e93', stroke: '#6e6a61', pitch: 240,
+    color: '#8c8780', stroke: '#4f4b46', pitch: 240,
   },
   feather: {
-    id: 'feather', name: '깃털', emoji: '🪶', blurb: '공기에 사뿐사뿐',
+    id: 'feather', name: '깃털', emoji: '🪶', blurb: '공기 저항을 크게 받아요',
     density: 0.0003, friction: 0.5, frictionStatic: 0.6, restitution: 0.05, air: 0.16,
-    color: '#fff6dc', stroke: '#c9b98a', pitch: 1400,
+    color: '#e6ddc9', stroke: '#9a8d72', pitch: 1400,
   },
 };
 

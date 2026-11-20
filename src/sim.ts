@@ -461,7 +461,7 @@ export class Sim {
       restitution: o.restitution ?? 0.2, chamfer: { radius: Math.min(6, w / 2.5, h / 2.5) },
     });
     return this.tag(b, { kind: 'wall', shape: 'poly' }, {
-      color: o.color ?? '#5d6474', stroke: o.stroke ?? '#434958', removable: o.removable ?? false, ...o,
+      color: o.color ?? '#33363c', stroke: o.stroke ?? '#585c64', removable: o.removable ?? false, ...o,
     });
   }
 
@@ -478,7 +478,7 @@ export class Sim {
     const t = 200;
     const floor = o.floor ?? this.H - 40;
     this.ground = floor;
-    const c = { color: o.color ?? '#6b7282', stroke: '#4c5262' };
+    const c = { color: o.color ?? '#24262b', stroke: '#3a3d44' };
     this.wall(this.W / 2, floor + t / 2, this.W + 2 * t, t, { ...c, friction: 0.8 });
     if (o.sides !== false) {
       this.wall(-t / 2, this.H / 2 - 400, t, this.H + 800, c);
@@ -504,7 +504,7 @@ export class Sim {
       density: o.density ?? 0.0012, friction: 0.1, frictionStatic: 0.1, restitution: 0.6,
     });
     return this.tag(b, { kind: 'charge', shape: 'circle', radius: r, charge: q }, {
-      color: q > 0 ? '#ff5d5d' : '#4d8dff', stroke: q > 0 ? '#c23a3a' : '#2c5fc4', air: 0.0, ...o,
+      color: q > 0 ? '#a8454b' : '#43649c', stroke: q > 0 ? '#5f1f26' : '#1f3153', air: 0.0, ...o,
     });
   }
 
@@ -522,7 +522,7 @@ export class Sim {
   star(x: number, y: number, r: number, strength: number, o: Shape = {}) {
     const b = Bodies.circle(x, y, r, { density: 0.02, restitution: 0.3, friction: 0.5 });
     return this.tag(b, { kind: 'star', shape: 'circle', radius: r, attract: strength }, {
-      color: '#ffc94d', stroke: '#f29f05', deco: 'sun', air: 0, ...o, static: o.static ?? true,
+      color: '#d6b46e', stroke: '#8a6c34', deco: 'sun', air: 0, ...o, static: o.static ?? true,
     });
   }
 
@@ -649,8 +649,7 @@ export class Sim {
       Body.setVelocity(b, { x: v.x + (dx / n) * k, y: v.y + (dy / n) * k - 2 * (1 - dist / R) });
       Body.setAngularVelocity(b, b.angularVelocity + (Math.random() - 0.5) * 0.3);
     }
-    this.fx({ kind: 'ring', x: p.x, y: p.y, life: 500, color: '#ffb703' });
-    this.fx({ kind: 'pop', x: p.x, y: p.y, life: 400, text: '펑!' });
+    this.fx({ kind: 'ring', x: p.x, y: p.y, life: 650 });
   }
 
   fx(e: Omit<Effect, 'born'>) {
@@ -659,7 +658,7 @@ export class Sim {
 
   confetti(x: number, y: number) {
     const colors = ['#ff6b6b', '#ffd93d', '#6bcb77', '#4d96ff', '#c77dff'];
-    const parts = Array.from({ length: 28 }, () => {
+    const parts = Array.from({ length: 18 }, () => {
       const a = Math.random() * Math.PI * 2, s = 2 + Math.random() * 6;
       return { x, y, vx: Math.cos(a) * s, vy: Math.sin(a) * s - 4, c: colors[(Math.random() * 5) | 0], r: 3 + Math.random() * 4 };
     });

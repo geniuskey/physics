@@ -4,7 +4,7 @@ import { D, type Sim, type Vec } from './sim';
 import { PX_PER_M } from './units';
 
 /** 그래프 계열 색 (범주형 1–3번, 고정 순서) */
-const SERIES = ['#2a78d6', '#eb6834', '#1baf7a'];
+const SERIES = ['#d6b874', '#79b4c8', '#c98a8f'];
 
 type Tab = 'pos' | 'vel' | 'energy';
 interface Series { key: keyof Sample; name: string }
@@ -257,14 +257,14 @@ export class Probe {
       const lines = [`t = ${s.t.toFixed(2)} s`, ...def.series.map((se) => `${se.name}  ${fmt(val(s, se.key), def.unit)}`)];
       def.series.forEach((se, i) => {
         ctx.fillStyle = SERIES[i];
-        ctx.strokeStyle = '#fff';
+        ctx.strokeStyle = '#121317';
         ctx.lineWidth = 2;
         ctx.beginPath(); ctx.arc(x, Y(val(s, se.key)), 4, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
       });
       ctx.font = '600 11px Pretendard, system-ui, sans-serif';
       const bw = Math.max(...lines.map((l) => ctx.measureText(l).width)) + 16, bh = lines.length * 15 + 8;
       const bx = x + bw + 10 > L + pw ? x - bw - 8 : x + 8;
-      ctx.fillStyle = 'rgba(255,255,255,0.95)';
+      ctx.fillStyle = 'rgba(16,17,21,0.96)';
       ctx.strokeStyle = grid;
       ctx.lineWidth = 1;
       ctx.beginPath(); ctx.roundRect(bx, T + 4, bw, bh, 6); ctx.fill(); ctx.stroke();
@@ -294,8 +294,8 @@ export class Probe {
     const { x, y } = b.position;
     ctx.save();
     ctx.strokeStyle = SERIES[0];
-    ctx.lineWidth = 2.5;
-    ctx.setLineDash([8, 6]);
+    ctx.lineWidth = 1.25;
+    ctx.setLineDash([5, 5]);
     ctx.beginPath(); ctx.arc(x, y, ext, 0, Math.PI * 2); ctx.stroke();
     ctx.setLineDash([]);
     const r = read(this.getSim(), b);
@@ -306,7 +306,7 @@ export class Probe {
       const ex = x + ux * len, ey = y + uy * len;
       ctx.strokeStyle = SERIES[1];
       ctx.fillStyle = SERIES[1];
-      ctx.lineWidth = 4;
+      ctx.lineWidth = 2;
       ctx.lineCap = 'round';
       ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(ex, ey); ctx.stroke();
       const a = Math.atan2(uy, ux);
@@ -315,15 +315,15 @@ export class Probe {
       ctx.lineTo(ex + Math.cos(a + 2.4) * 14, ey + Math.sin(a + 2.4) * 14);
       ctx.lineTo(ex + Math.cos(a - 2.4) * 14, ey + Math.sin(a - 2.4) * 14);
       ctx.closePath(); ctx.fill();
-      ctx.font = '700 18px Pretendard, system-ui, sans-serif';
+      ctx.font = '500 16px "IBM Plex Mono", ui-monospace, monospace';
       ctx.textAlign = 'left';
       ctx.textBaseline = 'middle';
       const label = `${r.speed.toFixed(2)} m/s`;
       const tw = ctx.measureText(label).width;
       const lx = ux >= 0 ? ex + 14 : ex - 14 - tw - 16;
-      ctx.fillStyle = 'rgba(255,255,255,0.92)';
-      ctx.beginPath(); ctx.roundRect(lx, ey - 14, tw + 16, 28, 7); ctx.fill();
-      ctx.fillStyle = '#15171c';
+      ctx.fillStyle = 'rgba(16,17,21,0.9)';
+      ctx.beginPath(); ctx.roundRect(lx, ey - 14, tw + 16, 28, 3); ctx.fill();
+      ctx.fillStyle = '#ece6da';
       ctx.fillText(label, lx + 8, ey + 1);
     }
     ctx.restore();
