@@ -39,6 +39,7 @@ const STARS = seeded(160, 7);
 
 export function render(ctx: CanvasRenderingContext2D, sim: Sim, v: View, o: RenderOpts) {
   const t = performance.now();
+  light = document.documentElement.dataset.theme === 'light';
   ctx.setTransform(v.dpr, 0, 0, v.dpr, 0, 0);
   background(ctx, v, o.theme, t);
 
@@ -121,12 +122,21 @@ function tone(c: string, lo = 0.3, hi = 0.84): Tone {
 const shade = (t: Tone, dl: number, a = t.a) => hsla(t.h, t.s, t.l + dl, a);
 /** 선·궤적용: 어두운 바탕에서 잘 보이게 밝게 */
 export function lineColor(c: string, a?: number) {
-  const t = tone(c, 0.58, 0.82);
+  const t = light ? tone(c, 0.3, 0.48) : tone(c, 0.58, 0.82);
   return shade(t, 0, a ?? t.a);
 }
 
 export const GOLD = '#c8a96a';
-const IVORY = 'rgba(236,228,212,';
+
+// 밝은 화면이면 캔버스도 밝은 실험대가 돼요. render() 가 매 프레임 <html data-theme> 를 읽어요.
+let light = false;
+export const isLight = () => light;
+/** 글자·가는 선의 기본색: 어두운 바탕엔 상아색, 밝은 바탕엔 먹색 */
+export const ink = (a: number) => (light ? `rgba(29,27,23,${a})` : `rgba(236,228,212,${a})`);
+/** 밝은 금색 글자 (밝은 바탕에선 읽히게 짙은 금색) */
+export const gold = (a: number) => (light ? `rgba(122,92,34,${Math.min(1, a + 0.1)})` : `rgba(226,200,143,${a})`);
+/** 황동 선 */
+export const brass = (a: number) => (light ? `rgba(150,115,48,${Math.min(1, a + 0.15)})` : `rgba(200,169,106,${a})`);
 
 function background(ctx: CanvasRenderingContext2D, v: View, theme: Theme, t: number) {
   const { cw, ch } = v;
@@ -144,32 +154,37 @@ function background(ctx: CanvasRenderingContext2D, v: View, theme: Theme, t: num
       return;
     case 'space':
     case 'night':
-      lin(theme === 'space' ? '#040508' : '#060912', theme === 'space' ? '#0b0d16' : '#101628');
+      if (light) lin(theme === 'space' ? '#e7e9ef' : '#e4e8f0', theme === 'space' ? '#d9dce5' : '#d4dae6');
+      else lin(theme === 'space' ? '#040508' : '#060912', theme === 'space' ? '#0b0d16' : '#101628');
       for (const s of STARS) {
         const tw = 0.5 + 0.5 * Math.sin(t / 900 + s.z * 30);
-        ctx.globalAlpha = 0.12 + 0.45 * tw * s.z;
-        ctx.fillStyle = s.z > 0.85 ? '#f3e2bd' : '#e9ecf2';
+        ctx.globalAlpha = light ? 0.06 + 0.3 * tw * s.z : 0.12 + 0.45 * tw * s.z;
+        ctx.fillStyle = light ? (s.z > 0.85 ? '#8a6a2c' : '#4c5466') : s.z > 0.85 ? '#f3e2bd' : '#e9ecf2';
         const r = 0.5 + s.z * 0.9;
         ctx.beginPath(); ctx.arc(s.x * cw, s.y * ch, r, 0, 7); ctx.fill();
       }
       ctx.globalAlpha = 1;
       break;
     case 'table':
-      lin('#140e0a', '#0b0806');
+      if (light) lin('#ede6d9', '#e1d8c7');
+      else lin('#140e0a', '#0b0806');
       break;
     case 'lab':
-      lin('#141417', '#0c0d0f');
+      if (light) lin('#f4f2ed', '#e8e5de');
+      else lin('#141417', '#0c0d0f');
       break;
     case 'ice':
-      lin('#10161c', '#0a0d11');
+      if (light) lin('#eff3f6', '#e0e7ed');
+      else lin('#10161c', '#0a0d11');
       break;
     default:
-      lin('#16171b', '#0c0d10');
+      if (light) lin('#f6f4ef', '#eae7e0');
+      else lin('#16171b', '#0c0d10');
   }
   // 가장자리를 살짝 어둡게: 조명이 가운데를 비추는 실험대
   const vg = ctx.createRadialGradient(cw / 2, ch * 0.42, Math.min(cw, ch) * 0.25, cw / 2, ch / 2, Math.max(cw, ch) * 0.8);
   vg.addColorStop(0, 'rgba(0,0,0,0)');
-  vg.addColorStop(1, 'rgba(0,0,0,0.45)');
+  vg.addColorStop(1, light ? 'rgba(70,58,35,0.12)' : 'rgba(0,0,0,0.45)');
   ctx.fillStyle = vg;
   ctx.fillRect(0, 0, cw, ch);
 }
@@ -196,14 +211,15 @@ function worldDecor(ctx: CanvasRenderingContext2D, sim: Sim, theme: Theme) {
   if (theme === 'space' || theme === 'night' || theme === 'void') return;
   // 정밀 모눈: 10 cm 가는 선, 1 m 굵은 선
   const cool = theme === 'ice';
-  const base = cool ? 'rgba(170,200,230,' : IVORY;
+  const base = (a: number) => (cool ? (light ? `rgba(40,75,110,${a})` : `rgba(170,200,230,${a})`) : ink(a));
+  const k = light ? 1.5 : 1;
   ctx.lineWidth = 1;
-  ctx.strokeStyle = base + '0.028)';
+  ctx.strokeStyle = base(0.028 * k);
   ctx.beginPath();
   for (let x = 0; x <= W; x += 50) if (x % 100) { ctx.moveTo(x, 0); ctx.lineTo(x, H); }
   for (let y = 0; y <= H; y += 50) if (y % 100) { ctx.moveTo(0, y); ctx.lineTo(W, y); }
   ctx.stroke();
-  ctx.strokeStyle = base + '0.055)';
+  ctx.strokeStyle = base(0.055 * k);
   ctx.beginPath();
   for (let x = 0; x <= W; x += 100) { ctx.moveTo(x, 0); ctx.lineTo(x, H); }
   for (let y = 0; y <= H; y += 100) { ctx.moveTo(0, y); ctx.lineTo(W, y); }
@@ -225,7 +241,7 @@ function drawZone(ctx: CanvasRenderingContext2D, z: Zone, t: number) {
     const dir = z.dir!;
     const ang = Math.atan2(dir.y, dir.x);
     const speed = 0.12 * (z.strength ?? 1);
-    ctx.strokeStyle = 'rgba(190,215,232,0.26)';
+    ctx.strokeStyle = light ? 'rgba(50,95,125,0.3)' : 'rgba(190,215,232,0.26)';
     ctx.lineWidth = 1.5;
     ctx.lineCap = 'round';
     const cx = z.x + z.w / 2, cy = z.y + z.h / 2;
@@ -244,7 +260,7 @@ function drawZone(ctx: CanvasRenderingContext2D, z: Zone, t: number) {
     const s = z.strength ?? 1;
     ctx.fillStyle = s > 0 ? 'rgba(150,135,200,0.07)' : 'rgba(200,169,106,0.07)';
     ctx.fillRect(z.x, z.y, z.w, z.h);
-    ctx.fillStyle = s > 0 ? 'rgba(185,172,225,0.5)' : 'rgba(214,186,128,0.55)';
+    ctx.fillStyle = s > 0 ? (light ? 'rgba(90,75,150,0.55)' : 'rgba(185,172,225,0.5)') : brass(0.55);
     ctx.strokeStyle = ctx.fillStyle;
     ctx.lineWidth = 1.25;
     for (let x = z.x + 30; x < z.x + z.w; x += 60) {
@@ -271,7 +287,7 @@ function drawZone(ctx: CanvasRenderingContext2D, z: Zone, t: number) {
   }
   ctx.restore();
   if (z.kind !== 'wind' && z.kind !== 'water') {
-    ctx.strokeStyle = IVORY + '0.07)';
+    ctx.strokeStyle = ink(0.07);
     ctx.lineWidth = 1;
     roundRect(ctx, z.x + 0.5, z.y + 0.5, z.w - 1, z.h - 1, 6);
     ctx.stroke();
@@ -280,7 +296,7 @@ function drawZone(ctx: CanvasRenderingContext2D, z: Zone, t: number) {
     ctx.font = '500 21px Pretendard, system-ui, sans-serif';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'alphabetic';
-    ctx.fillStyle = IVORY + '0.62)';
+    ctx.fillStyle = ink(0.62);
     ctx.fillText(z.label, z.x + z.w / 2, Math.max(z.y, 0) + 40);
   }
   if (z.kind === 'wind') {
@@ -289,7 +305,7 @@ function drawZone(ctx: CanvasRenderingContext2D, z: Zone, t: number) {
     ctx.save();
     ctx.translate(cx, cy);
     ctx.rotate(Math.atan2(z.dir!.y, z.dir!.x));
-    ctx.strokeStyle = 'rgba(200,222,238,0.4)';
+    ctx.strokeStyle = light ? 'rgba(50,95,125,0.5)' : 'rgba(200,222,238,0.4)';
     ctx.lineWidth = 1.5;
     ctx.beginPath();
     ctx.moveTo(-26, 0); ctx.lineTo(26, 0);
@@ -318,7 +334,7 @@ function drawWater(ctx: CanvasRenderingContext2D, z: Zone, t: number) {
     if (x === z.x) ctx.moveTo(x, z.y + wave(x));
     else ctx.lineTo(x, z.y + wave(x));
   }
-  ctx.strokeStyle = 'rgba(210,232,242,0.65)';
+  ctx.strokeStyle = light ? 'rgba(40,100,130,0.6)' : 'rgba(210,232,242,0.65)';
   ctx.lineWidth = 1.5;
   ctx.stroke();
   ctx.restore();
@@ -339,7 +355,7 @@ function drawField(ctx: CanvasRenderingContext2D, sim: Sim) {
       const len = 8 + 16 * k;
       const ux = f.x / m, uy = f.y / m;
       const x2 = x + ux * len, y2 = y + uy * len;
-      ctx.strokeStyle = `rgba(214,186,128,${0.15 + 0.6 * k})`;
+      ctx.strokeStyle = brass(0.15 + 0.6 * k);
       ctx.fillStyle = ctx.strokeStyle;
       ctx.lineWidth = 1.5;
       ctx.beginPath();
@@ -437,9 +453,9 @@ function bodyFill(ctx: CanvasRenderingContext2D, b: MBody): { fill: string | Can
     const g = ctx.createLinearGradient(0, top, 0, bot);
     g.addColorStop(0, 'rgba(205,230,242,0.42)');
     g.addColorStop(1, 'rgba(120,170,200,0.22)');
-    return { fill: g, edge: 'rgba(225,242,250,0.75)' };
+    return { fill: g, edge: light ? 'rgba(70,120,150,0.7)' : 'rgba(225,242,250,0.75)' };
   }
-  const t = tone(d.color, b.isStatic ? 0.14 : 0.3, b.isStatic ? 0.5 : 0.84);
+  const t = b.isStatic ? (light ? tone(d.color, 0.62, 0.8) : tone(d.color, 0.14, 0.5)) : tone(d.color, 0.3, 0.84);
   if (t.a < 0.02) return { fill: 'rgba(0,0,0,0)', edge: 'rgba(0,0,0,0)' };
   if (round) {
     const g = ctx.createRadialGradient(x - r * 0.35, y - r * 0.4, r * 0.05, x, y, r * 1.05);
@@ -451,7 +467,7 @@ function bodyFill(ctx: CanvasRenderingContext2D, b: MBody): { fill: string | Can
   const g = ctx.createLinearGradient(0, top, 0, bot);
   g.addColorStop(0, shade(t, 0.07));
   g.addColorStop(1, shade(t, -0.08));
-  return { fill: g, edge: b.isStatic ? IVORY + '0.12)' : shade(t, -0.2, Math.min(1, t.a)) };
+  return { fill: g, edge: b.isStatic ? ink(light ? 0.22 : 0.12) : shade(t, -0.2, Math.min(1, t.a)) };
 }
 
 function drawBody(ctx: CanvasRenderingContext2D, b: MBody, t: number) {
@@ -626,7 +642,7 @@ function drawBody(ctx: CanvasRenderingContext2D, b: MBody, t: number) {
     ctx.translate(x, y); ctx.rotate(b.angle);
     ctx.fillStyle = f.edge;
     ctx.beginPath(); ctx.moveTo(0, r - 2); ctx.lineTo(-4, r + 5); ctx.lineTo(4, r + 5); ctx.fill();
-    ctx.strokeStyle = IVORY + '0.4)'; ctx.lineWidth = 1;
+    ctx.strokeStyle = ink(0.4); ctx.lineWidth = 1;
     ctx.beginPath(); ctx.moveTo(0, r + 5);
     ctx.quadraticCurveTo(8, r + 22, 0, r + 38);
     ctx.stroke();
@@ -675,7 +691,7 @@ function drawLinks(ctx: CanvasRenderingContext2D, sim: Sim) {
     if (!ld) continue;
     const a = Constraint.pointAWorld(c), b = Constraint.pointBWorld(c);
     if (ld.type === 'grab') {
-      ctx.strokeStyle = IVORY + '0.45)';
+      ctx.strokeStyle = ink(0.45);
       ctx.setLineDash([4, 5]);
       ctx.lineWidth = 1;
       ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke();
@@ -707,7 +723,7 @@ function drawLinks(ctx: CanvasRenderingContext2D, sim: Sim) {
       ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke();
     }
     for (const [p, body] of [[a, c.bodyA], [b, c.bodyB]] as const) {
-      ctx.fillStyle = body ? '#d8d2c6' : GOLD;
+      ctx.fillStyle = body ? (light ? '#6f685b' : '#d8d2c6') : GOLD;
       ctx.beginPath(); ctx.arc(p.x, p.y, body ? 2.5 : 4.5, 0, 7); ctx.fill();
     }
   }
@@ -729,9 +745,9 @@ function drawEffects(ctx: CanvasRenderingContext2D, sim: Sim, t: number) {
       ctx.globalAlpha = Math.min(1, (1 - k) * 2.2);
       ctx.font = '500 26px "Noto Serif KR", Pretendard, serif';
       ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-      ctx.shadowColor = 'rgba(0,0,0,0.75)';
+      ctx.shadowColor = light ? 'rgba(255,253,249,0.9)' : 'rgba(0,0,0,0.75)';
       ctx.shadowBlur = 10;
-      ctx.fillStyle = '#e2c88f';
+      ctx.fillStyle = light ? '#7a5c22' : '#e2c88f';
       ctx.fillText(e.text!, e.x, e.y - ease * 40);
       ctx.shadowBlur = 0;
       ctx.globalAlpha = 1;

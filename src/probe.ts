@@ -4,7 +4,11 @@ import { D, type Sim, type Vec } from './sim';
 import { PX_PER_M } from './units';
 
 /** 그래프 계열 색 (범주형 1–3번, 고정 순서) */
-const SERIES = ['#d6b874', '#79b4c8', '#c98a8f'];
+const SERIES_DARK = ['#d6b874', '#79b4c8', '#c98a8f'];
+// 밝은 패널 위 그래프 선은 짙게
+const SERIES_LIGHT = ['#9a7424', '#2f7891', '#a9505a'];
+/** 측정 패널(그래프·범례)의 선 색: 패널 바탕을 따라가요. 실험 화면 위 표시도 같은 색을 써요 */
+const series = () => (document.documentElement.dataset.theme === 'light' ? SERIES_LIGHT : SERIES_DARK);
 
 type Tab = 'pos' | 'vel' | 'energy';
 interface Series { key: keyof Sample; name: string }
@@ -133,7 +137,7 @@ export class Probe {
       b.setAttribute('aria-selected', String(on));
     });
     const def = TABS[this.tab];
-    this.legend.innerHTML = def.series.map((s, i) => `<span><i style="background:${SERIES[i]}"></i>${s.name}</span>`).join('') +
+    this.legend.innerHTML = def.series.map((s, i) => `<span><i style="background:var(--series-${i})"></i>${s.name}</span>`).join('') +
       `<em>${def.unit}</em>`;
   }
 
@@ -178,6 +182,8 @@ export class Probe {
     const ink = css.getPropertyValue('--muted').trim() || '#687082';
     const grid = css.getPropertyValue('--line').trim() || '#e3e6eb';
     const text = css.getPropertyValue('--ink').trim() || '#15171c';
+    const panel = css.getPropertyValue('--surface').trim() || '#121317';
+    const SERIES = series();
 
     const all = this.rec.samples;
     const def = TABS[this.tab];
@@ -257,14 +263,14 @@ export class Probe {
       const lines = [`t = ${s.t.toFixed(2)} s`, ...def.series.map((se) => `${se.name}  ${fmt(val(s, se.key), def.unit)}`)];
       def.series.forEach((se, i) => {
         ctx.fillStyle = SERIES[i];
-        ctx.strokeStyle = '#121317';
+        ctx.strokeStyle = panel;
         ctx.lineWidth = 2;
         ctx.beginPath(); ctx.arc(x, Y(val(s, se.key)), 4, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
       });
       ctx.font = '600 11px Pretendard, system-ui, sans-serif';
       const bw = Math.max(...lines.map((l) => ctx.measureText(l).width)) + 16, bh = lines.length * 15 + 8;
       const bx = x + bw + 10 > L + pw ? x - bw - 8 : x + 8;
-      ctx.fillStyle = 'rgba(16,17,21,0.96)';
+      ctx.fillStyle = panel;
       ctx.strokeStyle = grid;
       ctx.lineWidth = 1;
       ctx.beginPath(); ctx.roundRect(bx, T + 4, bw, bh, 6); ctx.fill(); ctx.stroke();
@@ -293,7 +299,7 @@ export class Probe {
     const ext = Math.max(b.bounds.max.x - b.bounds.min.x, b.bounds.max.y - b.bounds.min.y) / 2 + 8;
     const { x, y } = b.position;
     ctx.save();
-    ctx.strokeStyle = SERIES[0];
+    ctx.strokeStyle = series()[0];
     ctx.lineWidth = 1.25;
     ctx.setLineDash([5, 5]);
     ctx.beginPath(); ctx.arc(x, y, ext, 0, Math.PI * 2); ctx.stroke();
@@ -304,8 +310,8 @@ export class Probe {
       const len = Math.min(r.speed * 0.25 * PX_PER_M, 300);
       const ux = r.vx / r.speed, uy = -r.vy / r.speed;
       const ex = x + ux * len, ey = y + uy * len;
-      ctx.strokeStyle = SERIES[1];
-      ctx.fillStyle = SERIES[1];
+      ctx.strokeStyle = series()[1];
+      ctx.fillStyle = series()[1];
       ctx.lineWidth = 2;
       ctx.lineCap = 'round';
       ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(ex, ey); ctx.stroke();

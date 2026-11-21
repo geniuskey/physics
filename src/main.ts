@@ -4,6 +4,9 @@ import { mountHome } from './home';
 import { mountPlay } from './play';
 import { sceneById } from './scenes';
 import { parseHash } from './share';
+import { initTheme } from './theme';
+
+initTheme();
 
 const app = document.getElementById('app')!;
 let cleanup: (() => void) | undefined;

@@ -3,6 +3,7 @@ import { icon } from './icons';
 import { fitView, render, toWorld, type View } from './render';
 import { CATS, SCENES, type Cat, type Scene } from './scenes';
 import { D, Matter, Sim, type MBody } from './sim';
+import { currentTheme, themeLabel, toggleTheme } from './theme';
 
 const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]!);
 
@@ -20,6 +21,7 @@ export function mountHome(root: HTMLElement) {
       <a class="brand" href="#/">${logo()}<span>물리 실험실</span><small>LABORATORY</small></a>
       <nav class="topnav-links">
         <a href="#experiments">실험 목록</a>
+        <button class="theme-btn" type="button"></button>
         <a class="btn sm primary" href="#/play/${free.id}">자유 실험 열기</a>
       </nav>
     </header>
@@ -92,9 +94,19 @@ export function mountHome(root: HTMLElement) {
     root.querySelector('#experiments')!.scrollIntoView({ behavior: 'smooth' });
   }));
 
+  // 밝은/어두운 화면 바꾸기
+  const themeBtn = root.querySelector<HTMLButtonElement>('.theme-btn')!;
+  const syncTheme = () => {
+    themeBtn.innerHTML = icon(currentTheme() === 'light' ? 'moon' : 'sun', 17);
+    themeBtn.title = themeBtn.ariaLabel = themeLabel();
+  };
+  syncTheme();
+  themeBtn.addEventListener('click', toggleTheme);
+  window.addEventListener('themechange', syncTheme);
+
   const stopHero = hero(root.querySelector<HTMLCanvasElement>('.hero-canvas')!);
   const stopThumbs = thumbnails(root);
-  return () => { stopHero(); stopThumbs(); };
+  return () => { stopHero(); stopThumbs(); window.removeEventListener('themechange', syncTheme); };
 }
 
 function card(s: Scene) {
@@ -194,10 +206,13 @@ function hero(canvas: HTMLCanvasElement) {
   const gap = r * 1.98;
   const x0 = cx - ((n - 1) * gap) / 2;
   const anchors = Array.from({ length: n }, (_, i) => ({ x: x0 + i * gap, y: top }));
+  // 밝은 바탕에서는 줄이 묻히지 않게 짙게
+  const ropeColor = () => (currentTheme() === 'light' ? '#6f685b' : '#c9c3b6');
+  const ropes: ReturnType<Sim['link']>[] = [];
   const balls: MBody[] = anchors.map((a) => {
     const b = sim.ball(a.x, top + L, r, 'metal', { inertia: Infinity, restitution: 1, friction: 0, air: 0, removable: false, face: false });
     b.slop = r * 0.02;
-    sim.link({ point: a }, { body: b, point: { x: a.x, y: top + L } }, 'rope', { stiffness: 1, color: '#c9c3b6' });
+    ropes.push(sim.link({ point: a }, { body: b, point: { x: a.x, y: top + L } }, 'rope', { stiffness: 1, color: ropeColor() }));
     return b;
   });
   const patterns: [number, number][] = [[1, 0], [2, 0], [1, 1], [1, 0], [3, 0]];
@@ -213,6 +228,8 @@ function hero(canvas: HTMLCanvasElement) {
     });
   };
   lift();
+  const recolor = () => ropes.forEach((c) => { (c as unknown as { plugin: { d: { color?: string } } }).plugin.d.color = ropeColor(); });
+  window.addEventListener('themechange', recolor);
 
   const frame = (c: CanvasRenderingContext2D) => {
     const w = (n - 1) * gap + 240, fx = cx - w / 2, base = top + L + r + 46;
@@ -331,5 +348,5 @@ function hero(canvas: HTMLCanvasElement) {
     raf = requestAnimationFrame(loop);
   };
   raf = requestAnimationFrame(loop);
-  return () => { cancelAnimationFrame(raf); ro.disconnect(); };
+  return () => { cancelAnimationFrame(raf); ro.disconnect(); window.removeEventListener('themechange', recolor); };
 }

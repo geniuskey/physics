@@ -1,5 +1,5 @@
 import type { MatId } from './materials';
-import type { Theme } from './render';
+import { brass, gold, ink, isLight, type Theme } from './render';
 import { B_DEMO, BASE_DT, G_EARTH, PLANET_G, PX_PER_M, Q_UNIT, toM, velFromSI } from './units';
 import { D, Matter, type MBody, type Sim, type Vec } from './sim';
 import type { ToolId } from './tools';
@@ -111,7 +111,7 @@ function release(bodies: MBody[]) {
 export const labelBoxes: [number, number, number, number][] = [];
 
 /** plate: 무늬(자기장 기호 등) 위에 쓸 때 글자 뒤에 까는 판 색 */
-function label(ctx: CanvasRenderingContext2D, text: string, x: number, y: number, color = 'rgba(236,228,212,0.86)', size = 24, plate?: string) {
+function label(ctx: CanvasRenderingContext2D, text: string, x: number, y: number, color = ink(0.86), size = 24, plate?: string) {
   ctx.font = `500 ${size}px Pretendard, system-ui, sans-serif`;
   const w = ctx.measureText(text).width;
   const box: [number, number, number, number] = [x - w / 2 - 14, y - size * 0.85, w + 28, size * 1.7];
@@ -130,7 +130,7 @@ function label(ctx: CanvasRenderingContext2D, text: string, x: number, y: number
 
 /** 왼쪽 눈금자: 바닥에서 1 m 마다 */
 function ruler(ctx: CanvasRenderingContext2D, x = 40) {
-  ctx.fillStyle = 'rgba(236,228,212,0.58)';
+  ctx.fillStyle = ink(0.58);
   ctx.font = '400 15px "IBM Plex Mono", ui-monospace, monospace';
   ctx.textAlign = 'left';
   ctx.textBaseline = 'middle';
@@ -219,12 +219,12 @@ export const SCENES: Scene[] = [
         },
         back: (ctx) => {
           const y = FLOOR - height.value * PX_PER_M;
-          ctx.strokeStyle = 'rgba(200,169,106,0.5)';
+          ctx.strokeStyle = brass(0.5);
           ctx.setLineDash([6, 8]);
           ctx.lineWidth = 1.25;
           ctx.beginPath(); ctx.moveTo(200, y); ctx.lineTo(1400, y); ctx.stroke();
           ctx.setLineDash([]);
-          label(ctx, `출발 ${height.value} m`, 1490, y, 'rgba(236,228,212,0.72)', 22);
+          label(ctx, `출발 ${height.value} m`, 1490, y, ink(0.72), 22);
           ruler(ctx);
         },
       };
@@ -323,18 +323,18 @@ export const SCENES: Scene[] = [
             const h = (speed.value * speed.value) / (2 * G_EARTH * cols[i].g);
             const y = FLOOR - h * PX_PER_M;
             if (y > 40) {
-              ctx.strokeStyle = 'rgba(200,169,106,0.55)';
+              ctx.strokeStyle = brass(0.55);
               ctx.setLineDash([5, 6]);
               ctx.lineWidth = 1.25;
               ctx.beginPath(); ctx.moveTo(i * cw + 60, y); ctx.lineTo(i * cw + cw - 20, y); ctx.stroke();
               ctx.setLineDash([]);
               ctx.font = '400 14px "IBM Plex Mono", ui-monospace, monospace';
               ctx.textAlign = 'right';
-              ctx.fillStyle = 'rgba(226,200,143,0.8)';
+              ctx.fillStyle = gold(0.8);
               ctx.fillText(`이론 ${h.toFixed(2)} m`, i * cw + cw - 20, y - 10);
             }
             for (let y2 = FLOOR - 100, k = 1; y2 > 80; y2 -= 100, k++) {
-              ctx.fillStyle = 'rgba(236,228,212,0.3)';
+              ctx.fillStyle = ink(0.3);
               ctx.fillRect(i * cw + 14, y2, 20, 1);
               ctx.font = '400 13px "IBM Plex Mono", ui-monospace, monospace';
               ctx.textAlign = 'left';
@@ -478,14 +478,14 @@ export const SCENES: Scene[] = [
           { label: '공 더 주기', icon: '🏀', run: () => { ball(200, 500); ball(260, 500); } },
         ],
         back: (ctx) => {
-          ctx.strokeStyle = 'rgba(200,169,106,0.7)';
+          ctx.strokeStyle = brass(0.7);
           ctx.lineWidth = 1.5;
           ctx.strokeRect(1392 - 7 - 40, 290, 40, 40);
           // 발사대와 공기 저항이 없을 때의 궤적(점선)
           const th = (angle.value * Math.PI) / 180, v = speed.value;
           ctx.fillStyle = '#26282d';
           ctx.fillRect(L0.x - 30, L0.y + 18, 60, FLOOR - L0.y - 18);
-          ctx.strokeStyle = 'rgba(200,169,106,0.55)';
+          ctx.strokeStyle = brass(0.55);
           ctx.lineWidth = 1.25;
           ctx.setLineDash([5, 7]);
           ctx.beginPath();
@@ -497,14 +497,14 @@ export const SCENES: Scene[] = [
           }
           ctx.stroke();
           ctx.setLineDash([]);
-          ctx.strokeStyle = 'rgba(226,200,143,0.9)';
+          ctx.strokeStyle = gold(0.9);
           ctx.lineWidth = 3;
           ctx.beginPath(); ctx.moveTo(L0.x, L0.y); ctx.lineTo(L0.x + Math.cos(th) * 70, L0.y - Math.sin(th) * 70); ctx.stroke();
-          label(ctx, `${angle.value}° · ${speed.value.toFixed(1)} m/s`, L0.x, L0.y - 110, 'rgba(236,228,212,0.75)', 20);
+          label(ctx, `${angle.value}° · ${speed.value.toFixed(1)} m/s`, L0.x, L0.y - 110, ink(0.75), 20);
         },
         front: (ctx) => {
           // 그물
-          ctx.strokeStyle = 'rgba(236,228,212,0.55)';
+          ctx.strokeStyle = ink(0.55);
           ctx.lineWidth = 1;
           for (let i = 0; i <= 6; i++) {
             const x1 = 1240 + (i * 140) / 6, x2 = 1270 + (i * 80) / 6;
@@ -671,8 +671,8 @@ export const SCENES: Scene[] = [
           const tan = Math.tan(ang());
           lanes.forEach((l, i) => {
             const y = laneY(i) - 70;
-            label(ctx, l.name, 1250, y, 'rgba(236,228,212,0.78)', 28);
-            label(ctx, `μs ${l.muS.toFixed(2)} · μk ${l.mu.toFixed(2)} · ${tan > l.muS ? '미끄러짐' : '멈춰 있음'}`, 1250, y + 36, 'rgba(226,200,143,0.8)', 17);
+            label(ctx, l.name, 1250, y, ink(0.78), 28);
+            label(ctx, `μs ${l.muS.toFixed(2)} · μk ${l.mu.toFixed(2)} · ${tan > l.muS ? '미끄러짐' : '멈춰 있음'}`, 1250, y + 36, gold(0.8), 17);
           });
         },
       };
@@ -761,19 +761,20 @@ export const SCENES: Scene[] = [
         back: (ctx) => {
           lanes.forEach((l, i) => {
             const cx = 1300, cy = i * lh + lh / 2;
-            for (const [r, c] of [[110, '#2f4a6e'], [80, '#1a1c20'], [50, '#6e2a32'], [20, '#1a1c20']] as const) {
+            const gap = isLight() ? '#f2f0ea' : '#1a1c20';
+            for (const [r, c] of [[110, isLight() ? '#6683aa' : '#2f4a6e'], [80, gap], [50, isLight() ? '#b25661' : '#6e2a32'], [20, gap]] as const) {
               ctx.fillStyle = c; ctx.globalAlpha = 0.85;
               ctx.beginPath(); ctx.arc(cx, cy, r, 0, 7); ctx.fill();
             }
             ctx.globalAlpha = 1;
-            ctx.strokeStyle = 'rgba(236,228,212,0.2)'; ctx.lineWidth = 1; ctx.setLineDash([5, 7]);
+            ctx.strokeStyle = ink(0.2); ctx.lineWidth = 1; ctx.setLineDash([5, 7]);
             ctx.beginPath(); ctx.moveTo(X0, i * lh + 20); ctx.lineTo(X0, (i + 1) * lh - 20); ctx.stroke();
             // 이론상 멈추는 곳
             const x = X0 + stopAt(speed.value, l.mu) * PX_PER_M;
             if (x < sim.W - 30) {
-              ctx.strokeStyle = 'rgba(200,169,106,0.6)'; ctx.setLineDash([5, 6]);
+              ctx.strokeStyle = brass(0.6); ctx.setLineDash([5, 6]);
               ctx.beginPath(); ctx.moveTo(x, i * lh + 40); ctx.lineTo(x, (i + 1) * lh - 40); ctx.stroke();
-              label(ctx, `${stopAt(speed.value, l.mu).toFixed(1)} m`, x, (i + 1) * lh - 26, 'rgba(226,200,143,0.85)', 18);
+              label(ctx, `${stopAt(speed.value, l.mu).toFixed(1)} m`, x, (i + 1) * lh - 26, gold(0.85), 18);
             }
             ctx.setLineDash([]);
           });
@@ -816,7 +817,7 @@ export const SCENES: Scene[] = [
       sim.ball(1500, 700, 34, 'balloon', { face: true });
       return {
         back: (ctx) => {
-          label(ctx, '밀도 < 1000 kg/m³ 이면 뜨고, 크면 가라앉아요', 800, 360, 'rgba(236,228,212,0.5)', 20);
+          label(ctx, '밀도 < 1000 kg/m³ 이면 뜨고, 크면 가라앉아요', 800, 360, ink(0.5), 20);
         },
       };
     },
@@ -917,7 +918,7 @@ export const SCENES: Scene[] = [
           ctx.fillStyle = 'rgba(184,153,90,0.7)';
           for (let k = 0; k < 4; k++) { ctx.rotate(Math.PI / 2); ctx.beginPath(); ctx.ellipse(55, 0, 55, 18, 0, 0, 7); ctx.fill(); }
           ctx.restore();
-          label(ctx, '목표', 1425, 110, 'rgba(226,200,143,0.85)', 22);
+          label(ctx, '목표', 1425, 110, gold(0.85), 22);
         },
       };
     },
@@ -1090,7 +1091,7 @@ export const SCENES: Scene[] = [
           label(ctx, '⊗ 오른쪽으로 휘는 자기장', 1120, 120, 'rgba(232,208,155,0.95)', 21, 'rgba(18,15,10,0.92)');
           // 예상 궤도: 위로 쏜 구슬은 qB > 0 이면 왼쪽으로 돌아요 (두 구슬 모두 qB > 0)
           const r = radius(speed.value) * PX_PER_M;
-          ctx.strokeStyle = 'rgba(200,169,106,0.45)';
+          ctx.strokeStyle = brass(0.45);
           ctx.lineWidth = 1.25;
           ctx.setLineDash([5, 7]);
           for (const p of SHOTS) { ctx.beginPath(); ctx.arc(p.x - r, p.y, r, 0, Math.PI * 2); ctx.stroke(); }
@@ -1375,7 +1376,7 @@ export const SCENES: Scene[] = [
             ctx.fillStyle = '#050505';
             ctx.beginPath(); ctx.arc(p.x, p.y, 34, 0, 7); ctx.fill();
           }
-          ctx.strokeStyle = 'rgba(200,169,106,0.22)'; ctx.lineWidth = 1;
+          ctx.strokeStyle = brass(0.22); ctx.lineWidth = 1;
           ctx.beginPath(); ctx.moveTo(420, 40); ctx.lineTo(420, sim.H - 40); ctx.stroke();
           ctx.beginPath(); ctx.arc(420, 450, 6, 0, 7); ctx.fillStyle = 'rgba(255,255,255,0.3)'; ctx.fill();
         },

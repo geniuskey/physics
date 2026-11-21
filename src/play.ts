@@ -1,3 +1,4 @@
+import { currentTheme, toggleTheme } from './theme';
 import { boom, click, ding, impact, isMuted, setMuted, unlock } from './audio';
 import { MATERIALS, PICKABLE } from './materials';
 import { icon } from './icons';
@@ -99,6 +100,7 @@ export function mountPlay(root: HTMLElement, scene: Scene, shared?: Shared) {
             <button class="switch" data-toggle="trails"><span>이동 경로</span><i></i></button>
             <button class="switch" data-toggle="field"><span>힘 화살표</span><i></i></button>
             <button class="switch" data-toggle="sound"><span>소리</span><i></i></button>
+            <button class="switch" data-toggle="light"><span>밝은 화면</span><i></i></button>
           </div>
           <p class="set-note"><kbd>Space</kbd> 일시정지 · <kbd>Ctrl</kbd>+<kbd>Z</kbd> 되돌리기 · <kbd>M</kbd> 측정 · <kbd>1</kbd>–<kbd>9</kbd> 도구 선택</p>
         </aside>
@@ -309,6 +311,7 @@ export function mountPlay(root: HTMLElement, scene: Scene, shared?: Shared) {
     sw('trails', sim.trails);
     sw('field', sim.field);
     sw('sound', !isMuted());
+    sw('light', currentTheme() === 'light');
     $<HTMLButtonElement>('[data-act="speed"]').textContent = SPEED_LABEL[sim.speed];
     const pb = $<HTMLButtonElement>('[data-act="pause"]');
     if (pb.dataset.state !== String(sim.paused)) {
@@ -358,6 +361,7 @@ export function mountPlay(root: HTMLElement, scene: Scene, shared?: Shared) {
     if (el.dataset.toggle === 'trails') sim.trails = !sim.trails;
     if (el.dataset.toggle === 'field') sim.field = !sim.field;
     if (el.dataset.toggle === 'sound') setMuted(!isMuted());
+    if (el.dataset.toggle === 'light') toggleTheme();
     switch (el.dataset.act) {
       case 'pause': togglePause(); return;
       case 'speed': sim.speed = SPEEDS[(SPEEDS.indexOf(sim.speed) + 1) % SPEEDS.length]; showToast(`시뮬레이션 속도 ${SPEED_LABEL[sim.speed]}`); break;
