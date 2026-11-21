@@ -1,21 +1,31 @@
 import { describe, expect, it } from 'vitest';
-import { buildHash, clampToStep, parseHash } from '../src/share';
+import { buildPath, clampToStep, legacyHashToPath, parseRoute } from '../src/share';
 import { SCENES } from '../src/scenes';
 import { Sim } from '../src/sim';
 
 describe('링크로 실험 조건 공유', () => {
   it('주소를 만들고 다시 읽으면 같은 조건이 나온다', () => {
-    const hash = buildHash('hoops', { params: { deg: 45, v: 9.5 }, g: 'moon', air: 0 });
-    expect(hash).toBe('#/play/hoops?deg=45&v=9.5&g=moon&air=0');
-    expect(parseHash(hash)).toEqual({ id: 'hoops', shared: { params: { deg: 45, v: 9.5 }, g: 'moon', air: 0 } });
+    const path = buildPath('hoops', { params: { deg: 45, v: 9.5 }, g: 'moon', air: 0 });
+    expect(path).toBe('/play/hoops/?deg=45&v=9.5&g=moon&air=0');
+    const [p, q] = path.split('?');
+    expect(parseRoute(p, '?' + q)).toEqual({ id: 'hoops', shared: { params: { deg: 45, v: 9.5 }, g: 'moon', air: 0 } });
   });
   it('조건이 없으면 주소도 깔끔하다', () => {
-    expect(buildHash('free', { params: {} })).toBe('#/play/free');
-    expect(parseHash('#/play/free')).toEqual({ id: 'free', shared: { params: {} } });
+    expect(buildPath('free', { params: {} })).toBe('/play/free/');
+    expect(parseRoute('/play/free/')).toEqual({ id: 'free', shared: { params: {} } });
+    expect(parseRoute('/play/free')).toEqual({ id: 'free', shared: { params: {} } });
   });
   it('엉뚱한 값은 버린다', () => {
-    expect(parseHash('#/play/hoops?deg=abc&v=&g=<x>&x.y=3')!.shared).toEqual({ params: {} });
-    expect(parseHash('#/')).toBeUndefined();
+    expect(parseRoute('/play/hoops/', '?deg=abc&v=&g=<x>&x.y=3')!.shared).toEqual({ params: {} });
+    expect(parseRoute('/')).toBeUndefined();
+    expect(parseRoute('/play/')).toBeUndefined();
+  });
+  it('예전 해시 링크를 새 주소로 옮긴다', () => {
+    expect(legacyHashToPath('#/play/hoops?deg=45&g=moon')).toBe('/play/hoops/?deg=45&g=moon');
+    expect(legacyHashToPath('#/play/free')).toBe('/play/free/');
+    expect(legacyHashToPath('#/')).toBe('/');
+    expect(legacyHashToPath('#experiments')).toBeUndefined();
+    expect(legacyHashToPath('')).toBeUndefined();
   });
   it('슬라이더 범위와 눈금에 맞춘다', () => {
     expect(clampToStep(99, 10, 80, 1)).toBe(80);

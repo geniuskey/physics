@@ -3,14 +3,10 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-    <title>물리 실험실 — 예측하고 측정하는 인터랙티브 물리</title>
-    <meta name="description" content="낙하·포물선·마찰·부력·전기력·자기장·충돌을 예측하고, SI 단위로 측정해 이론과 비교하는 중·고등 물리 시뮬레이션. 설치 없이 브라우저에서 바로." />
-    <meta name="theme-color" content="#0b0c0e" />
+    <!--seo:head-->
+    <meta name="theme-color" content="#0b0c0e" media="(prefers-color-scheme: dark)" />
+    <meta name="theme-color" content="#f4f1ea" media="(prefers-color-scheme: light)" />
     <meta name="color-scheme" content="dark light" />
-    <meta property="og:title" content="물리 실험실" />
-    <meta property="og:description" content="결과를 예측하고, 측정하고, 이론식과 비교해 보세요." />
-    <meta property="og:url" content="https://physics.euiyun.com/" />
-    <meta property="og:type" content="website" />
     <script>
       // 첫 그림 전에 테마를 정해 깜빡임을 막아요 (src/theme.ts 와 같은 규칙)
       try {
@@ -22,10 +18,11 @@
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" />
+    <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" onload="this.onload=null;this.rel='stylesheet'" />
+    <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" /></noscript>
   </head>
   <body>
-    <div id="app"></div>
+    <div id="app"><!--seo:body--></div>
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>

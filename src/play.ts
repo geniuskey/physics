@@ -8,7 +8,7 @@ import { D, Sim } from './sim';
 import { PLANET_G } from './units';
 import { Probe } from './probe';
 import { Experiment } from './experiment';
-import { buildHash, clampToStep, type Shared } from './share';
+import { buildPath, clampToStep, type Shared } from './share';
 import { ALL_TOOLS, SIZES, TOOLS, ToolController, type ToolId, type ToolState } from './tools';
 
 const GRAVITY = [
@@ -42,7 +42,7 @@ export function mountPlay(root: HTMLElement, scene: Scene, shared?: Shared) {
   root.innerHTML = `
   <div class="play" style="--c:${cat.color}">
     <header class="pbar">
-      <a href="#/" class="back" aria-label="실험 목록으로" title="실험 목록으로">${icon('back', 20)}</a>
+      <a href="/" class="back" aria-label="실험 목록으로" title="실험 목록으로">${icon('back', 20)}</a>
       <div class="ptitle">
         <span class="crumb">${icon('cat-' + scene.cat, 14)}${cat.name}</span>
         <h1>${esc(scene.title)}</h1>
@@ -149,8 +149,8 @@ export function mountPlay(root: HTMLElement, scene: Scene, shared?: Shared) {
     const g = GRAVITY.find((x) => x.g.x === sim.gravity.x && x.g.y === sim.gravity.y);
     cond.g = g && (g.g.x !== g0.x || g.g.y !== g0.y) ? g.id : undefined;
     cond.air = sim.air !== (scene.air ?? 1) ? sim.air : undefined;
-    const hash = buildHash(scene.id, cond);
-    if (location.hash !== hash) history.replaceState(null, '', hash);
+    const path = buildPath(scene.id, cond);
+    if (location.pathname + location.search !== path) history.replaceState(null, '', path);
   }
 
   /** 주소로 받은 조건을 새로 만든 장면에 적용해요 */

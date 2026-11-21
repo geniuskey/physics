@@ -23,7 +23,8 @@ export function currentTheme(): Theme {
 
 function apply(t: Theme) {
   document.documentElement.dataset.theme = t;
-  document.querySelector('meta[name="theme-color"]')?.setAttribute('content', t === 'light' ? '#f4f1ea' : '#0b0c0e');
+  // 직접 고른 테마가 기기 설정과 달라도 주소창 색이 화면과 맞도록 두 태그 모두 바꿔요
+  document.querySelectorAll('meta[name="theme-color"]').forEach((m) => m.setAttribute('content', t === 'light' ? '#f4f1ea' : '#0b0c0e'));
   window.dispatchEvent(new CustomEvent('themechange', { detail: t }));
 }
 

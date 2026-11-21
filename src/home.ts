@@ -4,6 +4,7 @@ import { fitView, render, toWorld, type View } from './render';
 import { CATS, SCENES, type Cat, type Scene } from './scenes';
 import { D, Matter, Sim, type MBody } from './sim';
 import { currentTheme, themeLabel, toggleTheme } from './theme';
+import { scenePath } from './share';
 
 const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]!);
 
@@ -18,11 +19,11 @@ export function mountHome(root: HTMLElement) {
   root.innerHTML = `
   <div class="home">
     <header class="topnav">
-      <a class="brand" href="#/">${logo()}<span>물리 실험실</span><small>LABORATORY</small></a>
+      <a class="brand" href="/">${logo()}<span>물리 실험실</span><small>LABORATORY</small></a>
       <nav class="topnav-links">
         <a href="#experiments">실험 목록</a>
         <button class="theme-btn" type="button"></button>
-        <a class="btn sm primary" href="#/play/${free.id}">자유 실험 열기</a>
+        <a class="btn sm primary" href="${scenePath(free.id)}">자유 실험 열기</a>
       </nav>
     </header>
 
@@ -35,7 +36,7 @@ export function mountHome(root: HTMLElement) {
           <p class="lead">낙하, 포물선, 마찰, 부력, 전기력, 자기장, 충돌.
             조건을 정하고 결과를 먼저 예측한 다음, SI 단위로 측정한 값을 이론식과 나란히 놓고 비교합니다.</p>
           <div class="cta">
-            <a class="btn primary" href="#/play/${first.id}">${icon('play', 18)}첫 실험 시작하기</a>
+            <a class="btn primary" href="${scenePath(first.id)}">${icon('play', 18)}첫 실험 시작하기</a>
             <a class="btn" href="#experiments">실험 둘러보기 ${icon('down', 18)}</a>
           </div>
           <ol class="steps">
@@ -111,7 +112,7 @@ export function mountHome(root: HTMLElement) {
 
 function card(s: Scene) {
   const c = CATS[s.cat];
-  return `<a class="card${s.cat === 'free' ? ' free' : ''}" href="#/play/${s.id}" data-cat="${s.cat}" style="--c:${c.color}">
+  return `<a class="card${s.cat === 'free' ? ' free' : ''}" href="${scenePath(s.id)}" data-cat="${s.cat}" style="--c:${c.color}">
     <div class="thumb"><canvas data-scene="${s.id}" width="480" height="270"></canvas>${s.starter ? `<span class="badge">${icon('star-badge', 11)}추천</span>` : ''}</div>
     <div class="card-body">
       <span class="tag">${icon('cat-' + s.cat, 14)}${c.name}</span>
@@ -143,7 +144,7 @@ function thumbnails(root: HTMLElement) {
   return () => { cancelled = true; io.disconnect(); };
 }
 
-function drawThumb(cv: HTMLCanvasElement) {
+export function drawThumb(cv: HTMLCanvasElement) {
   const scene = SCENES.find((s) => s.id === cv.dataset.scene);
   if (!scene) return;
   const sim = new Sim(scene.W ?? 1600, scene.H ?? 900);

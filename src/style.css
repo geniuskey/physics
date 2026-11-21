@@ -677,3 +677,13 @@ kbd {
   .card, .btn, .open .ico, .switch i, .switch i::after, .thumb canvas { transition: none; }
 }
 @media (max-height: 520px) and (min-width: 1280px) { .pbar { grid-template-rows: 44px; } }
+
+/* ───────── 미리 만든 본문 (검색엔진용, 앱이 뜨면 실제 화면으로 바뀌어요) ───────── */
+.pre { max-width: 720px; margin: 0 auto; padding: 40px 16px 64px; color: var(--ink-2); line-height: 1.75; font-size: 15px; }
+.pre h1 { font-family: 'Noto Serif KR', serif; font-weight: 500; color: var(--ink-hi); font-size: 30px; line-height: 1.35; margin: 8px 0 12px; }
+.pre h2 { font-size: 17px; color: var(--ink); margin: 28px 0 8px; }
+.pre h3 { font-size: 15px; color: var(--gold); margin: 20px 0 6px; }
+.pre ul { padding-left: 20px; margin: 0; }
+.pre a { color: var(--gold-hi); }
+.pre .pre-brand { color: var(--muted); font-size: 13px; margin: 0; }
+.pre footer { margin-top: 40px; padding-top: 16px; border-top: 1px solid var(--line); color: var(--muted); font-size: 12.5px; }
