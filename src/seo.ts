@@ -125,7 +125,7 @@ function byCategory() {
     .filter((g) => g.scenes.length);
 }
 
-const foot = `<footer><p>교육용 2D 시뮬레이션입니다. 중력·마찰·전기력·자기장 속 운동은 SI 단위 식으로 계산하며, 각 실험에 가정과 한계를 밝혀 두었습니다.</p></footer>`;
+const foot = `<footer><p>교육용 2D 시뮬레이션입니다. 중력·마찰·전기력·자기장 속 운동은 SI 단위 식으로 계산하며, 각 실험에 가정과 한계를 밝혀 두었습니다.</p><p>© 2026 <a href="https://euiyun.com">Euiyun Lab</a></p></footer>`;
 
 export function homeBody() {
   return `<main class="pre">
