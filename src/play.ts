@@ -2,7 +2,7 @@ import { currentTheme, toggleTheme } from './theme';
 import { boom, click, ding, impact, isMuted, setMuted, unlock } from './audio';
 import { MATERIALS, PICKABLE } from './materials';
 import { icon } from './icons';
-import { fitView, render, toWorld, type View } from './render';
+import { fitView, render, syncLight, toWorld, type View } from './render';
 import { CATS, labelBoxes, type Runtime, type Scene } from './scenes';
 import { D, Sim } from './sim';
 import { PLANET_G } from './units';
@@ -185,6 +185,7 @@ export function mountPlay(root: HTMLElement, scene: Scene, shared?: Shared) {
 
   // ───────────────────── 장면 만들기 ─────────────────────
   function build() {
+    syncLight();
     sim = new Sim(scene.W ?? 1600, scene.H ?? 900);
     sim.gravity = { ...(scene.gravity ?? { x: 0, y: 1 }) };
     sim.air = scene.air ?? 1;

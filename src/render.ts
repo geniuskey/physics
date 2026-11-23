@@ -39,7 +39,7 @@ const STARS = seeded(160, 7);
 
 export function render(ctx: CanvasRenderingContext2D, sim: Sim, v: View, o: RenderOpts) {
   const t = performance.now();
-  light = document.documentElement.dataset.theme === 'light';
+  syncLight();
   ctx.setTransform(v.dpr, 0, 0, v.dpr, 0, 0);
   background(ctx, v, o.theme, t);
 
@@ -130,6 +130,10 @@ export const GOLD = '#c8a96a';
 
 // 밝은 화면이면 캔버스도 밝은 실험대가 돼요. render() 가 매 프레임 <html data-theme> 를 읽어요.
 let light = false;
+/** <html data-theme> 를 다시 읽어요. 장면을 만들기 전에 불러야 물체 색도 지금 테마로 정해져요 */
+export function syncLight() {
+  light = document.documentElement.dataset.theme === 'light';
+}
 export const isLight = () => light;
 /** 글자·가는 선의 기본색: 어두운 바탕엔 상아색, 밝은 바탕엔 먹색 */
 export const ink = (a: number) => (light ? `rgba(29,27,23,${a})` : `rgba(236,228,212,${a})`);
@@ -192,17 +196,17 @@ function background(ctx: CanvasRenderingContext2D, v: View, theme: Theme, t: num
 function worldDecor(ctx: CanvasRenderingContext2D, sim: Sim, theme: Theme) {
   const { W, H } = sim;
   if (theme === 'table') {
-    // 짙은 녹색 펠트 + 금색 상감선
-    ctx.fillStyle = '#0e3326';
+    // 짙은 녹색 펠트 + 금색 상감선 (밝은 화면에선 상아색 바탕에 어울리는 옅은 세이지 펠트)
+    ctx.fillStyle = light ? '#7fa592' : '#0e3326';
     roundRect(ctx, 0, 0, W, H, 18);
     ctx.fill();
     const g = ctx.createRadialGradient(W / 2, H * 0.45, 60, W / 2, H / 2, W * 0.65);
-    g.addColorStop(0, 'rgba(120,200,160,0.10)');
-    g.addColorStop(1, 'rgba(0,0,0,0.35)');
+    g.addColorStop(0, light ? 'rgba(255,255,240,0.18)' : 'rgba(120,200,160,0.10)');
+    g.addColorStop(1, light ? 'rgba(40,60,45,0.22)' : 'rgba(0,0,0,0.35)');
     ctx.fillStyle = g;
     roundRect(ctx, 0, 0, W, H, 18);
     ctx.fill();
-    ctx.strokeStyle = 'rgba(200,169,106,0.35)';
+    ctx.strokeStyle = light ? 'rgba(122,92,34,0.45)' : 'rgba(200,169,106,0.35)';
     ctx.lineWidth = 1.5;
     roundRect(ctx, 46, 46, W - 92, H - 92, 8);
     ctx.stroke();

@@ -1,6 +1,6 @@
 import { unlock, impact } from './audio';
 import { icon } from './icons';
-import { fitView, render, toWorld, type View } from './render';
+import { fitView, render, syncLight, toWorld, type View } from './render';
 import { CATS, SCENES, type Cat, type Scene } from './scenes';
 import { D, Matter, Sim, type MBody } from './sim';
 import { currentTheme, themeLabel, toggleTheme } from './theme';
@@ -137,16 +137,22 @@ function thumbnails(root: HTMLElement) {
       if (!e.isIntersecting) continue;
       io.unobserve(e.target);
       const cv = e.target as HTMLCanvasElement;
-      setTimeout(() => { if (!cancelled) drawThumb(cv); }, 0);
+      setTimeout(() => { if (!cancelled) { drawThumb(cv); drawn.add(cv); } }, 0);
     }
   }, { rootMargin: '200px' });
   canvases.forEach((c) => io.observe(c));
-  return () => { cancelled = true; io.disconnect(); };
+  // 테마를 바꾸면 이미 그린 미리보기도 새 바탕으로 다시 그려요
+  const drawn = new Set<HTMLCanvasElement>();
+  const redraw = () => drawn.forEach((cv) => drawThumb(cv));
+  window.addEventListener('themechange', redraw);
+  return () => { cancelled = true; io.disconnect(); window.removeEventListener('themechange', redraw); };
 }
 
 export function drawThumb(cv: HTMLCanvasElement) {
   const scene = SCENES.find((s) => s.id === cv.dataset.scene);
   if (!scene) return;
+  // 장면을 만들 때 정해지는 색(물체·장식)이 이전 테마로 남지 않게 먼저 맞춰요
+  syncLight();
   const sim = new Sim(scene.W ?? 1600, scene.H ?? 900);
   sim.gravity = { ...(scene.gravity ?? { x: 0, y: 1 }) };
   sim.air = scene.air ?? 1;

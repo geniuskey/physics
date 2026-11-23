@@ -218,6 +218,9 @@ kbd {
 /* 당구대 초록만 혼자 튀지 않게 채도를 다른 카드와 맞춰요 */
 .thumb canvas[data-scene='billiards'] { filter: saturate(0.45) brightness(1.05); }
 .card:hover .thumb canvas { filter: brightness(1.4) contrast(1.05); }
+/* 밝은 화면: 캔버스가 이미 밝은 실험대라 밝기를 올리면 하얗게 날아가요. 그대로 두고 살짝만 또렷하게 */
+:root[data-theme='light'] .thumb canvas { filter: contrast(1.04); }
+:root[data-theme='light'] .card:hover .thumb canvas { filter: contrast(1.08) brightness(0.98); }
 .badge {
   position: absolute; top: 10px; left: 10px; display: inline-flex; align-items: center; gap: 5px;
   padding: 4px 8px; border-radius: 2px; font-size: 11px; font-weight: 500; letter-spacing: 0.14em;
