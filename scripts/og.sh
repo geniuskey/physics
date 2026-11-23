@@ -4,7 +4,7 @@
 set -e
 cd "$(dirname "$0")/.."
 CHROME="${CHROME:-/Applications/Google Chrome.app/Contents/MacOS/Google Chrome}"
-BASE="${BASE:-http://127.0.0.1:5173}"
+BASE="${BASE:-http://127.0.0.1:4200}"
 mkdir -p public/og
 ids="home $(node --input-type=module -e "import('vite').then(async (v) => { const s = await v.createServer({ server: { middlewareMode: true }, logLevel: 'silent' }); const m = await s.ssrLoadModule('/src/scenes.ts'); console.log(m.SCENES.map((x) => x.id).join(' ')); await s.close(); })")"
 for id in $ids; do

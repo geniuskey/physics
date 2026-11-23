@@ -38,4 +38,8 @@ function prerender(): Plugin {
   };
 }
 
-export default defineConfig({ plugins: [prerender()] });
+export default defineConfig({
+  plugins: [prerender()],
+  // tailscale serve(https://macstudio.….ts.net:4200)로 열 때 호스트 이름을 막지 않게
+  server: { port: 4200, strictPort: true, allowedHosts: ['.ts.net'] },
+});
